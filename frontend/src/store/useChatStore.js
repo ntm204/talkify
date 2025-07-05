@@ -14,7 +14,13 @@ export const useChatStore = create((set, get) => ({
     set({ isUsersLoading: true });
     try {
       const res = await axiosInstance.get("/messages/users");
-      set({ users: res.data });
+      // Sắp xếp users theo lastMessage.createdAt (mới nhất lên đầu)
+      const sortedUsers = res.data.sort((a, b) => {
+        const aTime = a.lastMessage ? new Date(a.lastMessage.createdAt).getTime() : 0;
+        const bTime = b.lastMessage ? new Date(b.lastMessage.createdAt).getTime() : 0;
+        return bTime - aTime;
+      });
+      set({ users: sortedUsers });
     } catch (error) {
       toast.error(error.response.data.message);
     } finally {
@@ -41,20 +47,26 @@ export const useChatStore = create((set, get) => ({
       const newMessage = res.data;
       // Cập nhật messages
       set({ messages: [...messages, newMessage] });
-      // Cập nhật lastMessage trong users
-      const updatedUsers = users.map((user) =>
-        user._id === selectedUser._id
-          ? {
-              ...user,
-              lastMessage: {
-                text: newMessage.text,
-                image: newMessage.image,
-                createdAt: newMessage.createdAt,
-                isSentByLoggedInUser: true,
-              },
-            }
-          : user
-      );
+      // Cập nhật lastMessage trong users và sắp xếp lại
+      const updatedUsers = users
+        .map((user) =>
+          user._id === selectedUser._id
+            ? {
+                ...user,
+                lastMessage: {
+                  text: newMessage.text,
+                  image: newMessage.image,
+                  createdAt: newMessage.createdAt,
+                  isSentByLoggedInUser: true,
+                },
+              }
+            : user
+        )
+        .sort((a, b) => {
+          const aTime = a.lastMessage ? new Date(a.lastMessage.createdAt).getTime() : 0;
+          const bTime = b.lastMessage ? new Date(b.lastMessage.createdAt).getTime() : 0;
+          return bTime - aTime;
+        });
       set({ users: updatedUsers });
     } catch (error) {
       toast.error(error.response.data.message);
@@ -85,20 +97,26 @@ export const useChatStore = create((set, get) => ({
         });
       }
 
-      // Cập nhật lastMessage trong users
-      const updatedUsers = users.map((user) =>
-        user._id === relatedUserId
-          ? {
-              ...user,
-              lastMessage: {
-                text: newMessage.text,
-                image: newMessage.image,
-                createdAt: newMessage.createdAt,
-                isSentByLoggedInUser: newMessage.senderId === loggedInUserId,
-              },
-            }
-          : user
-      );
+      // Cập nhật lastMessage trong users và sắp xếp lại
+      const updatedUsers = users
+        .map((user) =>
+          user._id === relatedUserId
+            ? {
+                ...user,
+                lastMessage: {
+                  text: newMessage.text,
+                  image: newMessage.image,
+                  createdAt: newMessage.createdAt,
+                  isSentByLoggedInUser: newMessage.senderId === loggedInUserId,
+                },
+              }
+            : user
+        )
+        .sort((a, b) => {
+          const aTime = a.lastMessage ? new Date(a.lastMessage.createdAt).getTime() : 0;
+          const bTime = b.lastMessage ? new Date(b.lastMessage.createdAt).getTime() : 0;
+          return bTime - aTime;
+        });
       set({ users: updatedUsers });
     });
   },
