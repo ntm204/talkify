@@ -14,7 +14,6 @@ export const useChatStore = create((set, get) => ({
     set({ isUsersLoading: true });
     try {
       const res = await axiosInstance.get("/messages/users");
-      // Sắp xếp users theo lastMessage.createdAt (mới nhất lên đầu)
       const sortedUsers = res.data.sort((a, b) => {
         const aTime = a.lastMessage ? new Date(a.lastMessage.createdAt).getTime() : 0;
         const bTime = b.lastMessage ? new Date(b.lastMessage.createdAt).getTime() : 0;
@@ -45,9 +44,8 @@ export const useChatStore = create((set, get) => ({
     try {
       const res = await axiosInstance.post(`/messages/send/${selectedUser._id}`, messageData);
       const newMessage = res.data;
-      // Cập nhật messages
       set({ messages: [...messages, newMessage] });
-      // Cập nhật lastMessage trong users và sắp xếp lại
+
       const updatedUsers = users
         .map((user) =>
           user._id === selectedUser._id
@@ -77,27 +75,25 @@ export const useChatStore = create((set, get) => ({
     const socket = useAuthStore.getState().socket;
     if (!socket) return;
 
+    // Dọn dẹp trước khi đăng ký mới
+    socket.off("newMessage");
+
     socket.on("newMessage", (newMessage) => {
       const { selectedUser, messages, users } = get();
-      const loggedInUserId = useAuthStore.getState().user?._id;
+      const loggedInUserId = useAuthStore.getState().authUser?._id;
 
-      // Xác định userId liên quan (người gửi hoặc người nhận)
       const relatedUserId =
         newMessage.senderId === loggedInUserId
           ? newMessage.receiverId
           : newMessage.senderId;
 
-      // Cập nhật messages nếu tin nhắn từ hoặc gửi đến selectedUser
       if (
         selectedUser &&
         (newMessage.senderId === selectedUser._id || newMessage.receiverId === selectedUser._id)
       ) {
-        set({
-          messages: [...messages, newMessage],
-        });
+        set({ messages: [...messages, newMessage] });
       }
 
-      // Cập nhật lastMessage trong users và sắp xếp lại
       const updatedUsers = users
         .map((user) =>
           user._id === relatedUserId

@@ -1,33 +1,16 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useState, useRef } from "react";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuthStore } from "../store/useAuthStore";
-import {
-  LogOut,
-  MessageSquare,
-  User,
-  Settings,
-  X,
-  BotIcon,
-  BrainIcon,
-  MessageCircleIcon,
-  MessagesSquareIcon,
-  SparklesIcon,
-  UserIcon,
-  DotIcon,
-  AxeIcon,
-  BugIcon,
-  CakeIcon,
-  MessageSquareDashedIcon,
-  CircleDashedIcon,
-  Globe2Icon,
-  GlobeIcon,
-  LucideGlobe,
-} from "lucide-react";
+import { LogOut, User, Settings, X, LucideGlobe } from "lucide-react";
 
 const Navbar = () => {
   const { logout, authUser } = useAuthStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
+
+  const navigate = useNavigate();
+  const location = useLocation();
+  const previousPath = useRef("/");
 
   const toggleModal = () => {
     if (isModalOpen) {
@@ -73,16 +56,24 @@ const Navbar = () => {
               </span>
             </button>
           ) : (
-            <Link
-              to="/login"
-              aria-label="Navigate to login page"
-              className="btn btn-sm btn-primary flex items-center gap-1.5 rounded-lg transition-colors duration-300"
+            <button
+              type="button"
+              onClick={() => {
+                if (location.pathname === "/settings") {
+                  navigate(previousPath.current); // quay lại trang trước
+                } else {
+                  previousPath.current = location.pathname; // lưu trang hiện tại
+                  navigate("/settings"); // điều hướng đến settings
+                }
+              }}
+              aria-label="Navigate to settings page"
+              className="btn btn-sm btn-ghost flex items-center gap-1.5 hover:bg-base-200 rounded-lg transition-colors duration-300"
             >
-              <User className="w-4 h-4" />
+              <Settings className="w-4 h-4" />
               <span className="hidden md:inline text-sm font-medium">
-                Login
+                Settings
               </span>
-            </Link>
+            </button>
           )}
         </nav>
       </div>
