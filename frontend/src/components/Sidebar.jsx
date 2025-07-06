@@ -11,14 +11,16 @@ const getRelativeTime = (date) => {
   const diffInSeconds = Math.floor((now - new Date(date)) / 1000);
 
   if (diffInSeconds < 60) return "vừa xong";
-  if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} phút`;
-  if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} giờ`;
-  if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)} ngày`;
-  return `${Math.floor(diffInSeconds / 604800)} tuần`;
+  if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} minutes`;
+  if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} hours`;
+  if (diffInSeconds < 604800)
+    return `${Math.floor(diffInSeconds / 86400)} days`;
+  return `${Math.floor(diffInSeconds / 604800)} weeks`;
 };
 
 const Sidebar = () => {
-  const { getUsers, users, selectedUser, setSelectedUser, isUsersLoading } = useChatStore();
+  const { getUsers, users, selectedUser, setSelectedUser, isUsersLoading } =
+    useChatStore();
   const { onlineUsers } = useAuthStore();
   const [showOnlineOnly, setShowOnlineOnly] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -50,10 +52,15 @@ const Sidebar = () => {
       <div className="border-b border-base-300 w-full p-5">
         <div className="flex items-center gap-2">
           <Users className="size-6" />
-          <span className="font-semibold text-lg hidden lg:block">Contacts</span>
+          <span className="font-semibold text-lg hidden lg:block">
+            Contacts
+          </span>
         </div>
         <div className="hidden lg:block">
-          <SearchBar searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
+          <SearchBar
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+          />
         </div>
         <div className="mt-3 hidden lg:flex items-center gap-2">
           <label className="cursor-pointer flex items-center gap-2">
@@ -66,7 +73,9 @@ const Sidebar = () => {
             />
             <span className="text-sm font-medium">Show online only</span>
           </label>
-          <span className="text-xs text-zinc-500">({onlineUsers.length - 1} online)</span>
+          <span className="text-xs text-zinc-500">
+            ({onlineUsers.length - 1} online)
+          </span>
         </div>
       </div>
 
@@ -78,16 +87,20 @@ const Sidebar = () => {
             className={`
               w-full p-3 flex items-center gap-3
               hover:bg-base-300 transition-colors duration-200
-              ${selectedUser?._id === user._id ? "bg-base-300 ring-1 ring-base-300" : ""}
+              ${
+                selectedUser?._id === user._id
+                  ? "bg-base-300 ring-1 ring-base-300"
+                  : ""
+              }
             `}
             aria-label={`Select user ${user.fullName}`}
             type="button"
           >
-            <div className="relative mx-auto lg:mx-0">
+            <div className="relative flex-shrink-0 w-12 h-12">
               <img
                 src={user.profilePic || "/avatar.png"}
                 alt={`${user.fullName}'s profile picture`}
-                className="size-12 object-cover rounded-full"
+                className="w-12 h-12 object-cover rounded-full"
               />
               {onlineUsers.includes(user._id) && (
                 <span
@@ -98,14 +111,18 @@ const Sidebar = () => {
               )}
             </div>
 
-            <div className="hidden lg:block text-left min-w-0">
+            <div className="hidden lg:block text-left min-w-0 flex-1">
               <div className="font-medium truncate">{user.fullName}</div>
               {user.lastMessage && (
-                <div className="text-sm text-zinc-400 truncate">
-                  {user.lastMessage.isSentByLoggedInUser ? "Bạn: " : ""}
-                  {user.lastMessage.text || (user.lastMessage.image && "Hình ảnh")}
-                  {" ・ "}
-                  {getRelativeTime(user.lastMessage.createdAt)}
+                <div className="text-sm text-zinc-400 flex items-baseline">
+                  <span className="truncate flex-1 min-w-0">
+                    {user.lastMessage.isSentByLoggedInUser ? "Bạn: " : ""}
+                    {user.lastMessage.text ||
+                      (user.lastMessage.image && "Hình ảnh")}
+                    <span className="inline whitespace-nowrap">
+                      ・{getRelativeTime(user.lastMessage.createdAt)}
+                    </span>
+                  </span>
                 </div>
               )}
             </div>
@@ -113,7 +130,9 @@ const Sidebar = () => {
         ))}
 
         {filteredUsers.length === 0 && (
-          <div className="text-center text-zinc-500 py-4 text-sm">No users found</div>
+          <div className="text-center text-zinc-500 py-4 text-sm">
+            No users found
+          </div>
         )}
       </div>
     </aside>
