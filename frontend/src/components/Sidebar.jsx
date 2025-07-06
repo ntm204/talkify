@@ -5,17 +5,15 @@ import SidebarSkeleton from "./skeletons/SidebarSkeleton";
 import SearchBar from "./SearchBar";
 import { Users } from "lucide-react";
 
-// Hàm tính thời gian tương đối
 const getRelativeTime = (date) => {
   const now = new Date();
   const diffInSeconds = Math.floor((now - new Date(date)) / 1000);
 
-  if (diffInSeconds < 60) return "vừa xong";
-  if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} minutes`;
-  if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} hours`;
-  if (diffInSeconds < 604800)
-    return `${Math.floor(diffInSeconds / 86400)} days`;
-  return `${Math.floor(diffInSeconds / 604800)} weeks`;
+  if (diffInSeconds < 60) return "now";
+  if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} min`;
+  if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} h`;
+  if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)} d`;
+  return `${Math.floor(diffInSeconds / 604800)} wk`;
 };
 
 const Sidebar = () => {
@@ -24,19 +22,18 @@ const Sidebar = () => {
   const { onlineUsers } = useAuthStore();
   const [showOnlineOnly, setShowOnlineOnly] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [tick, setTick] = useState(0); // State để buộc re-render
+  const [tick, setTick] = useState(0);
 
   useEffect(() => {
     getUsers();
   }, [getUsers]);
 
-  // Cập nhật tick mỗi phút để buộc re-render và cập nhật thời gian tương đối
   useEffect(() => {
     const interval = setInterval(() => {
       setTick((prev) => prev + 1);
-    }, 60 * 1000); // Cập nhật mỗi 60 giây
+    }, 60 * 1000);
 
-    return () => clearInterval(interval); // Dọn dẹp khi component unmount
+    return () => clearInterval(interval);
   }, []);
 
   const filteredUsers = users
@@ -115,14 +112,31 @@ const Sidebar = () => {
               <div className="font-medium truncate">{user.fullName}</div>
               {user.lastMessage && (
                 <div className="text-sm text-zinc-400 flex items-baseline">
-                  <span className="truncate flex-1 min-w-0">
-                    {user.lastMessage.isSentByLoggedInUser ? "Bạn: " : ""}
-                    {user.lastMessage.text ||
-                      (user.lastMessage.image && "Hình ảnh")}
-                    <span className="inline whitespace-nowrap">
-                      ・{getRelativeTime(user.lastMessage.createdAt)}
-                    </span>
-                  </span>
+                  {(() => {
+                    const prefix = user.lastMessage.isSentByLoggedInUser
+                      ? "You: "
+                      : "";
+                    const content =
+                      user.lastMessage.text ||
+                      (user.lastMessage.image && "Images") ||
+                      "";
+                    const fullText = prefix + content;
+                    const isTooLong = fullText.length > 20;
+                    const displayText = isTooLong
+                      ? fullText.slice(0, 20).trim() + "..."
+                      : fullText;
+
+                    return (
+                      <div className="flex items-baseline text-sm text-zinc-400">
+                        <span className="truncate flex-1 min-w-0">
+                          {displayText}
+                        </span>
+                        <span className="ml-1 whitespace-nowrap">
+                          ・{getRelativeTime(user.lastMessage.createdAt)}
+                        </span>
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
             </div>

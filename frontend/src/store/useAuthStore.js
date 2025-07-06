@@ -2,9 +2,10 @@ import { create } from "zustand";
 import { axiosInstance } from "../lib/axios.js";
 import toast from "react-hot-toast";
 import { io } from "socket.io-client";
-import { useChatStore } from "./useChatStore"; // 👈 THÊM dòng này
+import { useChatStore } from "./useChatStore";
 
-const BASE_URL = import.meta.env.MODE === "development" ? "http://localhost:5001" : "/";
+const BASE_URL =
+  import.meta.env.MODE === "development" ? "http://localhost:5001" : "/";
 
 export const useAuthStore = create((set, get) => ({
   authUser: null,
@@ -20,7 +21,7 @@ export const useAuthStore = create((set, get) => ({
       const res = await axiosInstance.get("/auth/check");
 
       set({ authUser: res.data });
-      get().connectSocket(); // 🔁 Socket kết nối khi xác thực thành công
+      get().connectSocket();
     } catch (error) {
       console.log("Error in checkAuth:", error);
       set({ authUser: null });
@@ -97,13 +98,13 @@ export const useAuthStore = create((set, get) => ({
     set({ socket });
 
     socket.on("connect", () => {
-      console.log("✅ Socket connected:", socket.id);
-      useChatStore.getState().subscribeToMessages(); // 🔁 Đăng ký sự kiện khi socket kết nối
+      console.log("Socket connected:", socket.id);
+      useChatStore.getState().subscribeToMessages();
     });
 
     socket.on("disconnect", () => {
-      console.log("❌ Socket disconnected");
-      useChatStore.getState().unsubscribeFromMessages(); // 🔁 Dọn dẹp
+      console.log("Socket disconnected");
+      useChatStore.getState().unsubscribeFromMessages();
       set({ socket: null });
     });
 
@@ -112,7 +113,7 @@ export const useAuthStore = create((set, get) => ({
     });
 
     socket.on("connect_error", (err) => {
-      console.error("⚠️ Socket connect error:", err.message);
+      console.error("Socket connect error:", err.message);
     });
   },
 
