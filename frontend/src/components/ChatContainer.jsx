@@ -93,9 +93,8 @@ const ChatContainer = () => {
                 <img src={selectedUser.profilePic || "/avatar.png"} alt="profile pic" />
               </div>
             </div>
-            <div className="chat-bubble flex items-center gap-2">
+            <div className="chat-bubble flex items-center">
               <span className="loading loading-dots loading-md"></span>
-              <span>{selectedUser.fullName} is typing...</span>
             </div>
           </div>
         )}
