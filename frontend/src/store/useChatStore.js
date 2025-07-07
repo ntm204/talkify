@@ -9,14 +9,19 @@ export const useChatStore = create((set, get) => ({
   selectedUser: null,
   isUsersLoading: false,
   isMessagesLoading: false,
+  typingUsers: [],
 
   getUsers: async () => {
     set({ isUsersLoading: true });
     try {
       const res = await axiosInstance.get("/messages/users");
       const sortedUsers = res.data.sort((a, b) => {
-        const aTime = a.lastMessage ? new Date(a.lastMessage.createdAt).getTime() : 0;
-        const bTime = b.lastMessage ? new Date(b.lastMessage.createdAt).getTime() : 0;
+        const aTime = a.lastMessage
+          ? new Date(a.lastMessage.createdAt).getTime()
+          : 0;
+        const bTime = b.lastMessage
+          ? new Date(b.lastMessage.createdAt).getTime()
+          : 0;
         return bTime - aTime;
       });
       set({ users: sortedUsers });
@@ -42,7 +47,10 @@ export const useChatStore = create((set, get) => ({
   sendMessage: async (messageData) => {
     const { selectedUser, messages, users } = get();
     try {
-      const res = await axiosInstance.post(`/messages/send/${selectedUser._id}`, messageData);
+      const res = await axiosInstance.post(
+        `/messages/send/${selectedUser._id}`,
+        messageData
+      );
       const newMessage = res.data;
       set({ messages: [...messages, newMessage] });
 
@@ -61,8 +69,12 @@ export const useChatStore = create((set, get) => ({
             : user
         )
         .sort((a, b) => {
-          const aTime = a.lastMessage ? new Date(a.lastMessage.createdAt).getTime() : 0;
-          const bTime = b.lastMessage ? new Date(b.lastMessage.createdAt).getTime() : 0;
+          const aTime = a.lastMessage
+            ? new Date(a.lastMessage.createdAt).getTime()
+            : 0;
+          const bTime = b.lastMessage
+            ? new Date(b.lastMessage.createdAt).getTime()
+            : 0;
           return bTime - aTime;
         });
       set({ users: updatedUsers });
@@ -75,8 +87,9 @@ export const useChatStore = create((set, get) => ({
     const socket = useAuthStore.getState().socket;
     if (!socket) return;
 
-    // Dọn dẹp trước khi đăng ký mới
     socket.off("newMessage");
+    socket.off("typing");
+    socket.off("stopTyping");
 
     socket.on("newMessage", (newMessage) => {
       const { selectedUser, messages, users } = get();
@@ -89,9 +102,18 @@ export const useChatStore = create((set, get) => ({
 
       if (
         selectedUser &&
-        (newMessage.senderId === selectedUser._id || newMessage.receiverId === selectedUser._id)
+        (newMessage.senderId === selectedUser._id ||
+          newMessage.receiverId === selectedUser._id)
       ) {
         set({ messages: [...messages, newMessage] });
+
+        if (newMessage.senderId === selectedUser._id) {
+          set((state) => ({
+            typingUsers: state.typingUsers.filter(
+              (id) => id !== newMessage.senderId
+            ),
+          }));
+        }
       }
 
       const updatedUsers = users
@@ -109,11 +131,37 @@ export const useChatStore = create((set, get) => ({
             : user
         )
         .sort((a, b) => {
-          const aTime = a.lastMessage ? new Date(a.lastMessage.createdAt).getTime() : 0;
-          const bTime = b.lastMessage ? new Date(b.lastMessage.createdAt).getTime() : 0;
+          const aTime = a.lastMessage
+            ? new Date(a.lastMessage.createdAt).getTime()
+            : 0;
+          const bTime = b.lastMessage
+            ? new Date(b.lastMessage.createdAt).getTime()
+            : 0;
           return bTime - aTime;
         });
-      set({ users: updatedUsers });
+      set((state) => ({ users: [...updatedUsers] }));
+    });
+
+    // NEW: Handle typing event
+    socket.on("typing", (senderId) => {
+      const { selectedUser } = get();
+      if (selectedUser && senderId === selectedUser._id) {
+        set((state) => {
+          if (!state.typingUsers.includes(senderId)) {
+            return { typingUsers: [...state.typingUsers, senderId] };
+          }
+          return state;
+        });
+      }
+    });
+
+    socket.on("stopTyping", (senderId) => {
+      const { selectedUser } = get();
+      if (selectedUser && senderId === selectedUser._id) {
+        set((state) => ({
+          typingUsers: state.typingUsers.filter((id) => id !== senderId),
+        }));
+      }
     });
   },
 
@@ -121,8 +169,34 @@ export const useChatStore = create((set, get) => ({
     const socket = useAuthStore.getState().socket;
     if (socket) {
       socket.off("newMessage");
+      socket.off("typing");
+      socket.off("stopTyping");
+    }
+
+    set({ typingUsers: [] });
+  },
+
+  sendTypingStatus: (isTyping) => {
+    const socket = useAuthStore.getState().socket;
+    const { authUser } = useAuthStore.getState();
+    const { selectedUser } = get();
+
+    if (!socket || !authUser || !selectedUser) return;
+
+    if (isTyping) {
+      socket.emit("typing", {
+        receiverId: selectedUser._id,
+        senderId: authUser._id,
+      });
+    } else {
+      socket.emit("stopTyping", {
+        receiverId: selectedUser._id,
+        senderId: authUser._id,
+      });
     }
   },
 
-  setSelectedUser: (selectedUser) => set({ selectedUser }),
+  setSelectedUser: (selectedUser) => {
+    set({ selectedUser, typingUsers: [] });
+  },
 }));
