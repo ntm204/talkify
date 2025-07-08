@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect } from "react";
 import { useChatStore } from "../store/useChatStore";
-import { Image, Send, X, Smile } from "lucide-react";
+import { Image, Send, X, Sticker } from "lucide-react";
 import toast from "react-hot-toast";
 
 const stickers = [
@@ -22,9 +22,34 @@ const MessageInput = () => {
   const [imagePreview, setImagePreview] = useState(null);
   const [showStickerPicker, setShowStickerPicker] = useState(false);
   const fileInputRef = useRef(null);
+  const stickerPickerRef = useRef(null);
   const { sendMessage, sendTypingStatus, selectedUser } = useChatStore();
   const [isTyping, setIsTyping] = useState(false);
   const typingTimeoutRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        stickerPickerRef.current &&
+        !stickerPickerRef.current.contains(event.target) &&
+        !event.target.closest(
+          ".btn-circle.btn-md.btn-ghost.text-zinc-400[aria-label='Toggle sticker picker']"
+        )
+      ) {
+        setShowStickerPicker(false);
+      }
+    };
+
+    if (showStickerPicker) {
+      document.addEventListener("mousedown", handleClickOutside);
+    } else {
+      document.removeEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showStickerPicker]);
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
@@ -117,7 +142,10 @@ const MessageInput = () => {
       )}
 
       {showStickerPicker && (
-        <div className="absolute bottom-20 left-4 bg-base-200 p-3 rounded-lg shadow-lg grid grid-cols-4 gap-2 z-10">
+        <div
+          className="absolute bottom-20 left-4 bg-base-200 p-3 rounded-lg shadow-lg grid grid-cols-4 gap-2 z-10"
+          ref={stickerPickerRef}
+        >
           {stickers.map((stickerPath, index) => (
             <img
               key={index}
@@ -131,7 +159,11 @@ const MessageInput = () => {
       )}
 
       <form onSubmit={handleSendMessage} className="flex items-center gap-2">
-        <div className={`flex items-center gap-2 ${text ? "button-group collapsed" : "button-group expand"}`}>
+        <div
+          className={`flex items-center gap-2 ${
+            text ? "button-group collapsed" : "button-group expand"
+          }`}
+        >
           <input
             type="file"
             accept="image/*"
@@ -152,12 +184,14 @@ const MessageInput = () => {
             onClick={() => setShowStickerPicker(!showStickerPicker)}
             aria-label="Toggle sticker picker"
           >
-            <Smile size={20} />
+            <Sticker size={20} />
           </button>
         </div>
         <input
           type="text"
-          className={`flex-1 input input-bordered input-md ${text ? "expanded" : "shrink"}`}
+          className={`flex-1 input input-bordered input-md ${
+            text ? "expanded" : "shrink"
+          }`}
           placeholder="Type a message..."
           value={text}
           onChange={handleTextChange}
