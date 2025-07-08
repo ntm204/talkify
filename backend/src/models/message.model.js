@@ -1,3 +1,4 @@
+// message.model.js
 import mongoose from "mongoose";
 
 const messageSchema = new mongoose.Schema(
@@ -16,6 +17,9 @@ const messageSchema = new mongoose.Schema(
       type: String,
     },
     image: {
+      type: String,
+    },
+    sticker: {
       type: String,
     },
   },

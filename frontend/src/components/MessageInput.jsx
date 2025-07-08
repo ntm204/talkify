@@ -1,11 +1,27 @@
+// MessageInput.jsx
 import { useRef, useState, useEffect } from "react";
 import { useChatStore } from "../store/useChatStore";
-import { Image, Send, X } from "lucide-react";
+import { Image, Send, X, Smile } from "lucide-react";
 import toast from "react-hot-toast";
+
+const stickers = [
+  "/stickers/sticker1.png",
+  "/stickers/sticker2.png",
+  "/stickers/sticker3.png",
+  "/stickers/sticker4.png",
+  "/stickers/sticker5.png",
+  "/stickers/sticker6.png",
+  "/stickers/sticker7.png",
+  "/stickers/sticker8.png",
+  "/stickers/sticker9.png",
+  "/stickers/sticker10.png",
+  "/stickers/sticker11.png",
+];
 
 const MessageInput = () => {
   const [text, setText] = useState("");
   const [imagePreview, setImagePreview] = useState(null);
+  const [showStickerPicker, setShowStickerPicker] = useState(false);
   const fileInputRef = useRef(null);
   const { sendMessage, sendTypingStatus, selectedUser } = useChatStore();
   const [isTyping, setIsTyping] = useState(false);
@@ -45,6 +61,20 @@ const MessageInput = () => {
     }
   };
 
+  const handleSendSticker = async (stickerPath) => {
+    try {
+      if (isTyping) {
+        sendTypingStatus(false);
+        setIsTyping(false);
+        clearTimeout(typingTimeoutRef.current);
+      }
+      await sendMessage({ sticker: stickerPath });
+      setShowStickerPicker(false);
+    } catch (error) {
+      console.error("Failed to send sticker:", error);
+    }
+  };
+
   const handleTextChange = (e) => {
     setText(e.target.value);
     if (!selectedUser) return;
@@ -67,7 +97,7 @@ const MessageInput = () => {
   }, [selectedUser, sendTypingStatus, isTyping]);
 
   return (
-    <div className="p-4 w-full">
+    <div className="p-4 w-full relative">
       {imagePreview && (
         <div className="mb-3 flex items-center gap-2">
           <div className="relative">
@@ -87,6 +117,21 @@ const MessageInput = () => {
           </div>
         </div>
       )}
+
+      {showStickerPicker && (
+        <div className="absolute bottom-20 left-4 bg-base-200 p-3 rounded-lg shadow-lg grid grid-cols-4 gap-2 z-10">
+          {stickers.map((stickerPath, index) => (
+            <img
+              key={index}
+              src={stickerPath}
+              alt={`Sticker ${index + 1}`}
+              className="w-12 h-12 cursor-pointer hover:scale-110 transition-transform duration-150"
+              onClick={() => handleSendSticker(stickerPath)}
+            />
+          ))}
+        </div>
+      )}
+
       <form onSubmit={handleSendMessage} className="flex items-center gap-2">
         <div className="flex-1 flex gap-2">
           <input
@@ -110,6 +155,14 @@ const MessageInput = () => {
             onClick={() => fileInputRef.current?.click()}
           >
             <Image size={20} />
+          </button>
+          <button
+            type="button"
+            className="hidden sm:flex btn btn-circle text-zinc-400"
+            onClick={() => setShowStickerPicker(!showStickerPicker)}
+            aria-label="Send sticker"
+          >
+            <Smile size={20} />
           </button>
         </div>
         <button

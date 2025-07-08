@@ -116,10 +116,16 @@ const Sidebar = () => {
                     const prefix = user.lastMessage.isSentByLoggedInUser
                       ? "You: "
                       : "";
-                    const content =
-                      user.lastMessage.text ||
-                      (user.lastMessage.image && "Images") ||
-                      "";
+                    let content = "";
+                    if (user.lastMessage.text) {
+                      content = user.lastMessage.text;
+                    } else if (user.lastMessage.image) {
+                      content = "Images";
+                    } else if (user.lastMessage.sticker) {
+                      // Thêm điều kiện cho sticker
+                      content = "Sticker";
+                    }
+
                     const fullText = prefix + content;
                     const isTooLong = fullText.length > 20;
                     const displayText = isTooLong

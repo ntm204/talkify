@@ -1,3 +1,4 @@
+// ChatContainer.jsx
 import { useChatStore } from "../store/useChatStore";
 import { useEffect, useRef } from "react";
 import ChatHeader from "./ChatHeader";
@@ -23,9 +24,7 @@ const ChatContainer = () => {
 
   useEffect(() => {
     getMessages(selectedUser._id);
-    subscribeToMessages();
-    return () => unsubscribeFromMessages();
-  }, [selectedUser._id, getMessages, subscribeToMessages, unsubscribeFromMessages]);
+  }, [selectedUser._id, getMessages]);
 
   useEffect(() => {
     if (messageEndRef.current && messages) {
@@ -55,7 +54,9 @@ const ChatContainer = () => {
         {messages.map((message) => (
           <div
             key={message._id}
-            className={`chat ${message.senderId === authUser._id ? "chat-end" : "chat-start"}`}
+            className={`chat ${
+              message.senderId === authUser._id ? "chat-end" : "chat-start"
+            }`}
           >
             <div className=" chat-image avatar">
               <div className="size-10 rounded-full border">
@@ -82,6 +83,13 @@ const ChatContainer = () => {
                   className="sm:max-w-[200px] rounded-md mb-2"
                 />
               )}
+              {message.sticker && ( // Hiển thị sticker
+                <img
+                  src={message.sticker}
+                  alt="Sticker"
+                  className="sm:max-w-[100px] rounded-md mb-2" // Kích thước sticker nhỏ hơn
+                />
+              )}
               {message.text && <p>{message.text}</p>}
             </div>
           </div>
@@ -90,7 +98,10 @@ const ChatContainer = () => {
           <div className="chat chat-start">
             <div className="chat-image avatar">
               <div className="size-10 rounded-full border">
-                <img src={selectedUser.profilePic || "/avatar.png"} alt="profile pic" />
+                <img
+                  src={selectedUser.profilePic || "/avatar.png"}
+                  alt="profile pic"
+                />
               </div>
             </div>
             <div className="chat-bubble flex items-center">

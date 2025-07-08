@@ -1,3 +1,4 @@
+// message.controller.js
 import User from "../models/user.model.js";
 import Message from "../models/message.model.js";
 import cloudinary from "../lib/cloudinary.js";
@@ -19,13 +20,14 @@ export const getUsersForSidebar = async (req, res) => {
           ],
         })
           .sort({ createdAt: -1 })
-          .select("text image createdAt senderId");
+          .select("text image sticker createdAt senderId");
         return {
           ...user.toObject(),
           lastMessage: lastMessage
             ? {
                 text: lastMessage.text,
                 image: lastMessage.image,
+                sticker: lastMessage.sticker,
                 createdAt: lastMessage.createdAt,
                 isSentByLoggedInUser:
                   lastMessage.senderId.toString() === loggedInUserId.toString(),
@@ -62,7 +64,7 @@ export const getMessages = async (req, res) => {
 export const sendMessage = async (req, res) => {
   // Send a new message and notify via Socket.IO
   try {
-    const { text, image } = req.body;
+    const { text, image, sticker } = req.body; // Thêm sticker vào đây
     const { id: receiverId } = req.params;
     const senderId = req.user._id;
 
@@ -77,6 +79,7 @@ export const sendMessage = async (req, res) => {
       receiverId,
       text,
       image: imageUrl,
+      sticker,
     });
     await newMessage.save();
 

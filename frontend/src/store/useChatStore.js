@@ -1,3 +1,4 @@
+// useChatStore.js
 import { create } from "zustand";
 import toast from "react-hot-toast";
 import { axiosInstance } from "../lib/axios";
@@ -62,6 +63,7 @@ export const useChatStore = create((set, get) => ({
                 lastMessage: {
                   text: newMessage.text,
                   image: newMessage.image,
+                  sticker: newMessage.sticker, // Thêm sticker vào đây
                   createdAt: newMessage.createdAt,
                   isSentByLoggedInUser: true,
                 },
@@ -124,6 +126,7 @@ export const useChatStore = create((set, get) => ({
                 lastMessage: {
                   text: newMessage.text,
                   image: newMessage.image,
+                  sticker: newMessage.sticker, // Thêm sticker vào đây
                   createdAt: newMessage.createdAt,
                   isSentByLoggedInUser: newMessage.senderId === loggedInUserId,
                 },
