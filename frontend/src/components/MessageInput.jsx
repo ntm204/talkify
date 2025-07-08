@@ -1,7 +1,9 @@
 import { useRef, useState, useEffect } from "react";
 import { useChatStore } from "../store/useChatStore";
-import { Image, Send, X, Sticker } from "lucide-react";
+import { Image, Send, X, Sticker, Smile } from "lucide-react"; // Import Smile icon
 import toast from "react-hot-toast";
+import Picker from "@emoji-mart/react"; // Import the emoji picker
+import data from "@emoji-mart/data"; // Import emoji data
 
 const stickers = [
   "/stickers/sticker1.png",
@@ -21,8 +23,10 @@ const MessageInput = () => {
   const [text, setText] = useState("");
   const [imagePreview, setImagePreview] = useState(null);
   const [showStickerPicker, setShowStickerPicker] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false); // State for emoji picker
   const fileInputRef = useRef(null);
   const stickerPickerRef = useRef(null);
+  const emojiPickerRef = useRef(null); // Ref for emoji picker
   const { sendMessage, sendTypingStatus, selectedUser } = useChatStore();
   const [isTyping, setIsTyping] = useState(false);
   const typingTimeoutRef = useRef(null);
@@ -38,9 +42,19 @@ const MessageInput = () => {
       ) {
         setShowStickerPicker(false);
       }
+
+      if (
+        emojiPickerRef.current &&
+        !emojiPickerRef.current.contains(event.target) &&
+        !event.target.closest(
+          ".btn-circle.btn-md.btn-ghost.text-zinc-400[aria-label='Toggle emoji picker']"
+        )
+      ) {
+        setShowEmojiPicker(false);
+      }
     };
 
-    if (showStickerPicker) {
+    if (showStickerPicker || showEmojiPicker) { // Listen for clicks if either picker is open
       document.addEventListener("mousedown", handleClickOutside);
     } else {
       document.removeEventListener("mousedown", handleClickOutside);
@@ -49,7 +63,7 @@ const MessageInput = () => {
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [showStickerPicker]);
+  }, [showStickerPicker, showEmojiPicker]); // Include showEmojiPicker in dependencies
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
@@ -113,6 +127,11 @@ const MessageInput = () => {
     }, 1000);
   };
 
+  const handleEmojiSelect = (emoji) => {
+    setText((prevText) => prevText + emoji.native);
+    setShowEmojiPicker(false); // Close picker after selection
+  };
+
   useEffect(() => {
     return () => {
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
@@ -158,6 +177,15 @@ const MessageInput = () => {
         </div>
       )}
 
+      {showEmojiPicker && (
+        <div
+          className="absolute bottom-20 right-4 bg-base-200 rounded-lg shadow-lg z-10" // Position to the right
+          ref={emojiPickerRef}
+        >
+          <Picker data={data} onEmojiSelect={handleEmojiSelect} theme="dark" />
+        </div>
+      )}
+
       <form onSubmit={handleSendMessage} className="flex items-center gap-2">
         <div
           className={`flex items-center gap-2 ${
@@ -196,6 +224,14 @@ const MessageInput = () => {
           value={text}
           onChange={handleTextChange}
         />
+        <button
+          type="button" // Change to type="button" to prevent form submission
+          className="btn btn-circle btn-md btn-ghost text-zinc-400"
+          onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+          aria-label="Toggle emoji picker"
+        >
+          <Smile size={20} />
+        </button>
         <button
           type="submit"
           className="btn btn-circle btn-md text-zinc-400"
