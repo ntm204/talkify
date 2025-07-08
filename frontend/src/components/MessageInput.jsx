@@ -1,4 +1,3 @@
-// MessageInput.jsx
 import { useRef, useState, useEffect } from "react";
 import { useChatStore } from "../store/useChatStore";
 import { Image, Send, X, Smile } from "lucide-react";
@@ -108,11 +107,10 @@ const MessageInput = () => {
             />
             <button
               onClick={removeImage}
-              className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-base-300
-              flex items-center justify-center"
+              className="absolute -top-1.5 -right-1.5 w-6 h-6 rounded-full bg-base-300 flex items-center justify-center"
               type="button"
             >
-              <X className="size-3" />
+              <X className="size-4" />
             </button>
           </div>
         </div>
@@ -125,7 +123,7 @@ const MessageInput = () => {
               key={index}
               src={stickerPath}
               alt={`Sticker ${index + 1}`}
-              className="w-12 h-12 cursor-pointer hover:scale-110 transition-transform duration-150"
+              className="w-12 h-12 cursor-pointer"
               onClick={() => handleSendSticker(stickerPath)}
             />
           ))}
@@ -133,14 +131,7 @@ const MessageInput = () => {
       )}
 
       <form onSubmit={handleSendMessage} className="flex items-center gap-2">
-        <div className="flex-1 flex gap-2">
-          <input
-            type="text"
-            className="w-full input input-bordered rounded-lg input-sm sm:input-md"
-            placeholder="Type a message..."
-            value={text}
-            onChange={handleTextChange}
-          />
+        <div className="flex items-center gap-2">
           <input
             type="file"
             accept="image/*"
@@ -150,30 +141,37 @@ const MessageInput = () => {
           />
           <button
             type="button"
-            className={`hidden sm:flex btn btn-circle
-                     ${imagePreview ? "text-emerald-500" : "text-zinc-400"}`}
+            className="btn btn-circle btn-md text-zinc-400"
             onClick={() => fileInputRef.current?.click()}
           >
             <Image size={20} />
           </button>
           <button
             type="button"
-            className="hidden sm:flex btn btn-circle text-zinc-400"
+            className="btn btn-circle btn-md text-zinc-400"
             onClick={() => setShowStickerPicker(!showStickerPicker)}
-            aria-label="Send sticker"
+            aria-label="Toggle sticker picker"
           >
             <Smile size={20} />
           </button>
         </div>
+        <input
+          type="text"
+          className="flex-1 input input-bordered rounded-lg input-md"
+          placeholder="Type a message..."
+          value={text}
+          onChange={handleTextChange}
+        />
         <button
           type="submit"
-          className="btn btn-sm btn-circle"
+          className="btn btn-circle btn-md text-zinc-400"
           disabled={!text.trim() && !imagePreview}
         >
-          <Send size={22} />
+          <Send size={20} />
         </button>
       </form>
     </div>
   );
 };
+
 export default MessageInput;
