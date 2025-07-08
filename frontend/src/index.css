@@ -3,12 +3,24 @@
 @tailwind utilities;
 
 @keyframes slideUp {
-  from { opacity: 0; transform: translateY(20px) scale(0.95); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 @keyframes slideDown {
-  from { opacity: 1; transform: translateY(0) scale(1); }
-  to { opacity: 0; transform: translateY(20px) scale(0.95); }
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
 }
 .animate-slideUp {
   animation: slideUp 0.3s ease-out;
@@ -17,7 +29,73 @@
   animation: slideDown 0.3s ease-out forwards;
 }
 
-/* Ensure font consistency */
 body {
-  font-family: 'Inter', sans-serif;
+  font-family: "Inter", sans-serif;
+}
+
+.input:focus {
+  outline: none;
+  border-color: #4b5563;
+  box-shadow: none;
+}
+
+.input {
+  border-radius: 9999px;
+  transition: width 0.4s ease-in-out, margin-left 0.4s ease-in-out;
+}
+
+.input.expanded {
+  width: calc(100% + 100px); /* Kéo tràn hết cỡ sang trái */
+  margin-left: -100px; /* Dịch sang trái để lấp chỗ button */
+}
+
+.input.shrink {
+  width: auto; /* Thu về kích thước ban đầu */
+  margin-left: 0;
+}
+
+.button-group {
+  transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out, scale 0.3s ease-in-out;
+}
+
+.button-group.collapsed {
+  transform: scale(0.5); /* Thu nhỏ trước */
+  opacity: 0; /* Rồi biến mất */
+  pointer-events: none;
+}
+
+.button-group.expand {
+  transform: scale(1); /* Phóng to lại */
+  opacity: 1;
+  pointer-events: auto;
+}
+
+@keyframes smoothExpand {
+  from {
+    width: auto;
+    margin-left: 0;
+  }
+  to {
+    width: calc(100% + 100px);
+    margin-left: -100px;
+  }
+}
+
+@keyframes smoothShrink {
+  from {
+    width: calc(100% + 100px);
+    margin-left: -100px;
+  }
+  to {
+    width: auto;
+    margin-left: 0;
+  }
+}
+
+.input.expanded {
+  animation: smoothExpand 0.4s ease-in-out forwards;
+}
+
+.input.shrink {
+  animation: smoothShrink 0.4s ease-in-out forwards;
 }

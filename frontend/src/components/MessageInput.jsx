@@ -131,7 +131,7 @@ const MessageInput = () => {
       )}
 
       <form onSubmit={handleSendMessage} className="flex items-center gap-2">
-        <div className="flex items-center gap-2">
+        <div className={`flex items-center gap-2 ${text ? "button-group collapsed" : "button-group expand"}`}>
           <input
             type="file"
             accept="image/*"
@@ -141,14 +141,14 @@ const MessageInput = () => {
           />
           <button
             type="button"
-            className="btn btn-circle btn-md text-zinc-400"
+            className="btn btn-circle btn-md btn-ghost text-zinc-400"
             onClick={() => fileInputRef.current?.click()}
           >
             <Image size={20} />
           </button>
           <button
             type="button"
-            className="btn btn-circle btn-md text-zinc-400"
+            className="btn btn-circle btn-md btn-ghost text-zinc-400"
             onClick={() => setShowStickerPicker(!showStickerPicker)}
             aria-label="Toggle sticker picker"
           >
@@ -157,7 +157,7 @@ const MessageInput = () => {
         </div>
         <input
           type="text"
-          className="flex-1 input input-bordered rounded-lg input-md"
+          className={`flex-1 input input-bordered input-md ${text ? "expanded" : "shrink"}`}
           placeholder="Type a message..."
           value={text}
           onChange={handleTextChange}
