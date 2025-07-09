@@ -18,7 +18,7 @@ const Navbar = () => {
       setTimeout(() => {
         setIsModalOpen(false);
         setIsClosing(false);
-      }, 300); 
+      }, 300);
     } else {
       setIsModalOpen(true);
     }
