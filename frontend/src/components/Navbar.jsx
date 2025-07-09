@@ -18,7 +18,7 @@ const Navbar = () => {
       setTimeout(() => {
         setIsModalOpen(false);
         setIsClosing(false);
-      }, 300); // Match animation duration
+      }, 300); 
     } else {
       setIsModalOpen(true);
     }
@@ -60,10 +60,10 @@ const Navbar = () => {
               type="button"
               onClick={() => {
                 if (location.pathname === "/settings") {
-                  navigate(previousPath.current); // quay lại trang trước
+                  navigate(previousPath.current);
                 } else {
-                  previousPath.current = location.pathname; // lưu trang hiện tại
-                  navigate("/settings"); // điều hướng đến settings
+                  previousPath.current = location.pathname;
+                  navigate("/settings");
                 }
               }}
               aria-label="Navigate to settings page"

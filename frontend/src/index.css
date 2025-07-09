@@ -45,12 +45,12 @@ body {
 }
 
 .input.expanded {
-  width: calc(100% + 100px); /* Kéo tràn hết cỡ sang trái */
-  margin-left: -100px; /* Dịch sang trái để lấp chỗ button */
+  width: calc(100% + 100px);
+  margin-left: -100px; 
 }
 
 .input.shrink {
-  width: auto; /* Thu về kích thước ban đầu */
+  width: auto;
   margin-left: 0;
 }
 
