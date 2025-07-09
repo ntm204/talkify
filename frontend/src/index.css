@@ -46,7 +46,7 @@ body {
 
 .input.expanded {
   width: calc(100% + 100px);
-  margin-left: -100px; 
+  margin-left: -100px;
 }
 
 .input.shrink {
@@ -60,13 +60,13 @@ body {
 }
 
 .button-group.collapsed {
-  transform: scale(0.5); /* Thu nhỏ trước */
-  opacity: 0; /* Rồi biến mất */
+  transform: scale(0.5);
+  opacity: 0;
   pointer-events: none;
 }
 
 .button-group.expand {
-  transform: scale(1); /* Phóng to lại */
+  transform: scale(1);
   opacity: 1;
   pointer-events: auto;
 }

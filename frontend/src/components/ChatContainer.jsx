@@ -1,4 +1,3 @@
-// ChatContainer.jsx
 import { useChatStore } from "../store/useChatStore";
 import { useEffect, useRef } from "react";
 import ChatHeader from "./ChatHeader";
@@ -83,11 +82,11 @@ const ChatContainer = () => {
                   className="sm:max-w-[200px] rounded-md mb-2"
                 />
               )}
-              {message.sticker && ( // Hiển thị sticker
+              {message.sticker && (
                 <img
                   src={message.sticker}
                   alt="Sticker"
-                  className="sm:max-w-[100px] rounded-md mb-2" // Kích thước sticker nhỏ hơn
+                  className="sm:max-w-[100px] rounded-md mb-2"
                 />
               )}
               {message.text && <p>{message.text}</p>}
