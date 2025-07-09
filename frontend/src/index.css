@@ -55,7 +55,8 @@ body {
 }
 
 .button-group {
-  transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out, scale 0.3s ease-in-out;
+  transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out,
+    scale 0.3s ease-in-out;
 }
 
 .button-group.collapsed {
@@ -98,4 +99,8 @@ body {
 
 .input.shrink {
   animation: smoothShrink 0.4s ease-in-out forwards;
+}
+
+.sticker-picker-container {
+  scrollbar-width: none;
 }
