@@ -104,3 +104,69 @@ body {
 .sticker-picker-container {
   scrollbar-width: none;
 }
+
+/* Modern switch toggle */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+}
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.switch-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  transition: 0.3s;
+  border-radius: 24px;
+}
+.switch-slider:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: 0.3s;
+  border-radius: 50%;
+}
+.switch input:checked + .switch-slider {
+  background-color: #2563eb;
+}
+.switch input:checked + .switch-slider:before {
+  transform: translateX(20px);
+}
+.switch-slider:active:before {
+  width: 22px;
+}
+
+.avatar-clickable {
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.avatar-clickable:active {
+  transform: scale(0.93);
+  box-shadow: 0 0 0 4px #2563eb33;
+}
+.avatar-clickable:hover {
+  box-shadow: 0 2px 8px 0 #2563eb22;
+}
+
+.user-card-clickable {
+  transition: background 0.15s, transform 0.12s;
+}
+.user-card-clickable:active {
+  background: #e0e7ff;
+  transform: scale(0.98);
+}
+.user-card-clickable:hover {
+  background: #f1f5ff;
+}

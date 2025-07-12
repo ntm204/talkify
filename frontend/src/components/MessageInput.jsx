@@ -52,6 +52,13 @@ const MessageInput = () => {
     };
   }, [showStickerPicker, showEmojiPicker]);
 
+  useEffect(() => {
+    return () => {
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      if (isTyping && selectedUser) sendTypingStatus(false);
+    };
+  }, [selectedUser, sendTypingStatus, isTyping]);
+
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (!file.type.startsWith("image/")) {
@@ -118,13 +125,6 @@ const MessageInput = () => {
     setText((prevText) => prevText + emoji.native);
     setShowEmojiPicker(false);
   };
-
-  useEffect(() => {
-    return () => {
-      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-      if (isTyping && selectedUser) sendTypingStatus(false);
-    };
-  }, [selectedUser, sendTypingStatus, isTyping]);
 
   return (
     <div className="p-4 w-full relative">

@@ -11,7 +11,9 @@ export const signup = async (req, res) => {
     }
 
     if (password.length < 6) {
-      return res.status(400).json({ message: "Password must be at least 6 characters" });
+      return res
+        .status(400)
+        .json({ message: "Password must be at least 6 characters" });
     }
 
     const user = await User.findOne({ email });
@@ -108,11 +110,80 @@ export const updateProfile = async (req, res) => {
   }
 };
 
+export const updateAllowStrangerMessage = async (req, res) => {
+  try {
+    const { allowStrangerMessage } = req.body;
+    const userId = req.user._id;
+
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      { allowStrangerMessage },
+      { new: true }
+    ).select("-password");
+
+    if (!updatedUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Emit real-time update to all connected users
+    try {
+      const { io } = await import("../lib/socket.js");
+      io.emit("userSettingsUpdate", {
+        userId: userId,
+        allowStrangerMessage: allowStrangerMessage,
+      });
+    } catch (socketError) {
+      console.log("Socket notification failed:", socketError.message);
+    }
+
+    res.json(updatedUser);
+  } catch (error) {
+    console.log("Error in updateAllowStrangerMessage:", error.message);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
 export const checkAuth = (req, res) => {
   try {
     res.status(200).json(req.user);
   } catch (error) {
     console.log("Error in checkAuth controller", error.message);
     res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+export const searchUsers = async (req, res) => {
+  try {
+    const { query, excludeFriends } = req.query;
+    const userId = req.user._id;
+    if (!query || query.trim().length < 2) {
+      return res.status(400).json({ message: "Từ khóa tìm kiếm quá ngắn" });
+    }
+    // Regex tìm kiếm không phân biệt hoa thường, có dấu/không dấu
+    const regex = new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
+    let filter = {
+      _id: { $ne: userId },
+      fullName: regex,
+    };
+    // Nếu cần loại trừ bạn bè đã kết bạn
+    if (excludeFriends === "true") {
+      const Friendship = (await import("../models/friendship.model.js"))
+        .default;
+      const friends = await Friendship.find({
+        $or: [
+          { requester: userId, status: "accepted" },
+          { recipient: userId, status: "accepted" },
+        ],
+      });
+      const friendIds = friends.map((f) =>
+        String(f.requester) === String(userId) ? f.recipient : f.requester
+      );
+      filter._id = { $nin: [userId, ...friendIds] };
+    }
+    const User = (await import("../models/user.model.js")).default;
+    const users = await User.find(filter).select("-password").limit(20);
+    res.json(users);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
 };

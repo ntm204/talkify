@@ -20,6 +20,10 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    allowStrangerMessage: {
+      type: Boolean,
+      default: true,
+    },
   },
   { timestamps: true }
 );

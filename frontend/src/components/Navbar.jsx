@@ -1,12 +1,29 @@
 import { useState, useRef } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuthStore } from "../store/useAuthStore";
-import { LogOut, User, Settings, X, LucideGlobe } from "lucide-react";
+import {
+  LogOut,
+  User,
+  Settings,
+  X,
+  LucideGlobe,
+  Users,
+  Bell,
+  UserPlus,
+  UserCheck,
+} from "lucide-react";
 
 const Navbar = () => {
-  const { logout, authUser } = useAuthStore();
+  const {
+    logout,
+    authUser,
+    notifications,
+    unreadCount,
+    markAllNotificationsRead,
+  } = useAuthStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -42,6 +59,103 @@ const Navbar = () => {
 
         {/* Navigation Buttons */}
         <nav className="flex items-center gap-3">
+          <div className="relative">
+            <button
+              type="button"
+              className="btn btn-sm btn-ghost flex items-center gap-1.5 hover:bg-base-200 rounded-lg transition-colors duration-300"
+              aria-label="Open notifications"
+              onClick={() => {
+                setShowNotifications((prev) => !prev);
+                markAllNotificationsRead();
+              }}
+            >
+              <Bell className="w-5 h-5" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5">
+                  {unreadCount}
+                </span>
+              )}
+            </button>
+            {showNotifications && (
+              <div className="absolute right-0 mt-2 w-80 bg-base-100 border border-base-300 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
+                <div className="p-3 border-b font-semibold text-base-content">
+                  Notifications
+                </div>
+                {notifications.length === 0 ? (
+                  <div className="p-4 text-center text-base-content/60">
+                    No notifications
+                  </div>
+                ) : (
+                  <ul>
+                    {notifications.slice(0, 4).map((n, idx) => (
+                      <li
+                        key={idx}
+                        className="px-4 py-4 border-b last:border-b-0 hover:bg-base-200/50 cursor-pointer transition-all duration-200 group"
+                        onClick={() => {
+                          setShowNotifications(false);
+                          if (n.type === "friend_request") navigate("/friends");
+                          if (n.type === "friend_accept") navigate("/friends");
+                        }}
+                      >
+                        <div className="flex items-start gap-3">
+                          <div
+                            className={`w-3 h-3 rounded-full mt-2 flex-shrink-0 ${
+                              n.type === "friend_request"
+                                ? "bg-primary animate-pulse"
+                                : "bg-success"
+                            }`}
+                          ></div>
+                          <div className="flex-1">
+                            {n.type === "friend_request" && (
+                              <div>
+                                <div className="flex items-center gap-2 mb-1">
+                                  <UserPlus
+                                    size={16}
+                                    className="text-primary"
+                                  />
+                                  <span className="font-medium text-base-content">
+                                    New Friend Request
+                                  </span>
+                                </div>
+                                <p className="text-sm text-base-content/60 mb-2">
+                                  Someone wants to connect with you
+                                </p>
+                              </div>
+                            )}
+                            {n.type === "friend_accept" && (
+                              <div>
+                                <div className="flex items-center gap-2 mb-1">
+                                  <UserCheck
+                                    size={16}
+                                    className="text-success"
+                                  />
+                                  <span className="font-medium text-success">
+                                    Friend Request Accepted
+                                  </span>
+                                </div>
+                                <p className="text-sm text-base-content/60 mb-2">
+                                  Your friend request was accepted
+                                </p>
+                              </div>
+                            )}
+                            <div className="text-xs text-base-content/40 group-hover:text-base-content/60 transition-colors duration-200">
+                              {new Date(n.timestamp).toLocaleString("en-US", {
+                                year: "numeric",
+                                month: "short",
+                                day: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </div>
+                          </div>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+          </div>
           {authUser ? (
             <button
               type="button"
@@ -120,6 +234,14 @@ const Navbar = () => {
                 >
                   <User className="w-4 h-4" />
                   Profile
+                </Link>
+                <Link
+                  to="/friends"
+                  className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-base-200/50 rounded-md transition-colors duration-200 font-medium text-base-content"
+                  onClick={toggleModal}
+                >
+                  <Users className="w-4 h-4" />
+                  Friends
                 </Link>
                 <Link
                   to="/settings"

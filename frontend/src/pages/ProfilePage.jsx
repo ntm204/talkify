@@ -1,10 +1,15 @@
 import { useState } from "react";
 import { useAuthStore } from "../store/useAuthStore";
 import { Camera, Mail, User } from "lucide-react";
+import { updateAllowStrangerMessage } from "../lib/axios";
 
 const ProfilePage = () => {
   const { authUser, isUpdatingProfile, updateProfile } = useAuthStore();
   const [selectedImg, setSelectedImg] = useState(null);
+  const [allowStrangerMessage, setAllowStrangerMessage] = useState(
+    authUser.allowStrangerMessage
+  );
+  const [updatingStranger, setUpdatingStranger] = useState(false);
 
   const handleImageUpload = async (e) => {
     const file = e.target.files[0];
@@ -19,6 +24,16 @@ const ProfilePage = () => {
       setSelectedImg(base64Image);
       await updateProfile({ profilePic: base64Image });
     };
+  };
+
+  const handleToggleStranger = async () => {
+    setUpdatingStranger(true);
+    try {
+      await updateAllowStrangerMessage(!allowStrangerMessage);
+      setAllowStrangerMessage((prev) => !prev);
+    } finally {
+      setUpdatingStranger(false);
+    }
   };
 
   return (
@@ -46,7 +61,9 @@ const ProfilePage = () => {
                   bg-base-content hover:scale-105
                   p-2 rounded-full cursor-pointer
                   transition-all duration-200
-                  ${isUpdatingProfile ? "animate-pulse pointer-events-none" : ""}
+                  ${
+                    isUpdatingProfile ? "animate-pulse pointer-events-none" : ""
+                  }
                 `}
               >
                 <Camera className="w-5 h-5 text-base-200" />
@@ -61,7 +78,9 @@ const ProfilePage = () => {
               </label>
             </div>
             <p className="text-sm text-zinc-400">
-              {isUpdatingProfile ? "Uploading..." : "Click the camera icon to update your photo"}
+              {isUpdatingProfile
+                ? "Uploading..."
+                : "Click the camera icon to update your photo"}
             </p>
           </div>
 
@@ -71,7 +90,9 @@ const ProfilePage = () => {
                 <User className="w-4 h-4" />
                 Full Name
               </div>
-              <p className="px-4 py-2.5 bg-base-200 rounded-lg border">{authUser?.fullName}</p>
+              <p className="px-4 py-2.5 bg-base-200 rounded-lg border">
+                {authUser?.fullName}
+              </p>
             </div>
 
             <div className="space-y-1.5">
@@ -79,7 +100,9 @@ const ProfilePage = () => {
                 <Mail className="w-4 h-4" />
                 Email Address
               </div>
-              <p className="px-4 py-2.5 bg-base-200 rounded-lg border">{authUser?.email}</p>
+              <p className="px-4 py-2.5 bg-base-200 rounded-lg border">
+                {authUser?.email}
+              </p>
             </div>
           </div>
 
@@ -93,6 +116,18 @@ const ProfilePage = () => {
               <div className="flex items-center justify-between py-2">
                 <span>Account Status</span>
                 <span className="text-green-500">Active</span>
+              </div>
+              <div className="flex items-center justify-between py-2">
+                <span>Allow messages from strangers</span>
+                <label className="switch">
+                  <input
+                    type="checkbox"
+                    checked={allowStrangerMessage}
+                    onChange={handleToggleStranger}
+                    disabled={updatingStranger}
+                  />
+                  <span className="switch-slider"></span>
+                </label>
               </div>
             </div>
           </div>

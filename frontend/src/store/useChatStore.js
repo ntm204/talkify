@@ -1,6 +1,17 @@
 import { create } from "zustand";
 import toast from "react-hot-toast";
-import { axiosInstance } from "../lib/axios";
+import {
+  axiosInstance,
+  fetchFriends,
+  fetchSentRequests,
+  fetchReceivedRequests,
+  acceptFriendRequest as apiAcceptFriendRequest,
+  declineFriendRequest as apiDeclineFriendRequest,
+  cancelFriendRequest as apiCancelFriendRequest,
+  searchUsers as apiSearchUsers,
+  sendFriendRequest as apiSendFriendRequest,
+  unfriend as apiUnfriend,
+} from "../lib/axios";
 import { useAuthStore } from "./useAuthStore";
 
 export const useChatStore = create((set, get) => ({
@@ -10,6 +21,14 @@ export const useChatStore = create((set, get) => ({
   isUsersLoading: false,
   isMessagesLoading: false,
   typingUsers: [],
+  friends: [],
+  isFriendsLoading: false,
+  sentRequests: [],
+  receivedRequests: [],
+  isSentRequestsLoading: false,
+  isReceivedRequestsLoading: false,
+  globalSearchResults: [],
+  isGlobalSearchLoading: false,
 
   getUsers: async () => {
     set({ isUsersLoading: true });
@@ -117,6 +136,7 @@ export const useChatStore = create((set, get) => ({
         }
       }
 
+      // Update users list with new message
       const updatedUsers = users
         .map((user) =>
           user._id === relatedUserId
@@ -125,7 +145,7 @@ export const useChatStore = create((set, get) => ({
                 lastMessage: {
                   text: newMessage.text,
                   image: newMessage.image,
-                  sticker: newMessage.sticker, // Thêm sticker vào đây
+                  sticker: newMessage.sticker,
                   createdAt: newMessage.createdAt,
                   isSentByLoggedInUser: newMessage.senderId === loggedInUserId,
                 },
@@ -144,7 +164,7 @@ export const useChatStore = create((set, get) => ({
       set((state) => ({ users: [...updatedUsers] }));
     });
 
-    // NEW: Handle typing event
+    // Handle typing event
     socket.on("typing", (senderId) => {
       const { selectedUser } = get();
       if (selectedUser && senderId === selectedUser._id) {
@@ -163,6 +183,28 @@ export const useChatStore = create((set, get) => ({
         set((state) => ({
           typingUsers: state.typingUsers.filter((id) => id !== senderId),
         }));
+      }
+    });
+
+    // Handle friendship updates
+    socket.on("friendshipUpdate", (update) => {
+      const { type } = update;
+      console.log("Friendship update in chat store:", type);
+
+      // Refresh relevant data based on update type
+      if (
+        type === "new_received_request" ||
+        type === "request_accepted" ||
+        type === "request_declined" ||
+        type === "request_cancelled" ||
+        type === "unfriended"
+      ) {
+        // Small delay to ensure backend has processed the update
+        setTimeout(() => {
+          get().fetchFriends();
+          get().fetchSentRequests();
+          get().fetchReceivedRequests();
+        }, 100);
       }
     });
   },
@@ -200,5 +242,118 @@ export const useChatStore = create((set, get) => ({
 
   setSelectedUser: (selectedUser) => {
     set({ selectedUser, typingUsers: [] });
+  },
+
+  fetchFriends: async () => {
+    set({ isFriendsLoading: true });
+    try {
+      const data = await fetchFriends();
+      set({ friends: data });
+    } catch (error) {
+      toast.error(
+        error?.response?.data?.message || "Error fetching friends list"
+      );
+    } finally {
+      set({ isFriendsLoading: false });
+    }
+  },
+
+  fetchSentRequests: async () => {
+    set({ isSentRequestsLoading: true });
+    try {
+      const data = await fetchSentRequests();
+      set({ sentRequests: data });
+    } catch (error) {
+      toast.error(
+        error?.response?.data?.message || "Error fetching sent requests"
+      );
+    } finally {
+      set({ isSentRequestsLoading: false });
+    }
+  },
+
+  fetchReceivedRequests: async () => {
+    set({ isReceivedRequestsLoading: true });
+    try {
+      const data = await fetchReceivedRequests();
+      set({ receivedRequests: data });
+    } catch (error) {
+      toast.error(
+        error?.response?.data?.message || "Error fetching received requests"
+      );
+    } finally {
+      set({ isReceivedRequestsLoading: false });
+    }
+  },
+
+  acceptFriendRequest: async (requesterId) => {
+    try {
+      await apiAcceptFriendRequest(requesterId);
+      await get().fetchReceivedRequests();
+      await get().fetchFriends();
+      toast.success("Friend request accepted");
+    } catch (error) {
+      toast.error(
+        error?.response?.data?.message || "Error accepting friend request"
+      );
+    }
+  },
+
+  declineFriendRequest: async (requesterId) => {
+    try {
+      await apiDeclineFriendRequest(requesterId);
+      await get().fetchReceivedRequests();
+      toast.success("Friend request declined");
+    } catch (error) {
+      toast.error(
+        error?.response?.data?.message || "Error declining friend request"
+      );
+    }
+  },
+
+  cancelFriendRequest: async (recipientId) => {
+    try {
+      await apiCancelFriendRequest(recipientId);
+      await get().fetchSentRequests();
+      toast.success("Friend request cancelled");
+    } catch (error) {
+      toast.error(
+        error?.response?.data?.message || "Error cancelling friend request"
+      );
+    }
+  },
+
+  searchUsersGlobal: async (query, excludeFriends = false) => {
+    set({ isGlobalSearchLoading: true });
+    try {
+      const data = await apiSearchUsers(query, excludeFriends);
+      set({ globalSearchResults: data });
+    } catch (error) {
+      set({ globalSearchResults: [] });
+    } finally {
+      set({ isGlobalSearchLoading: false });
+    }
+  },
+
+  sendFriendRequest: async (recipientId) => {
+    try {
+      await apiSendFriendRequest(recipientId);
+      toast.success("Friend request sent");
+      // Có thể fetch lại sentRequests nếu muốn
+    } catch (error) {
+      toast.error(
+        error?.response?.data?.message || "Error sending friend request"
+      );
+    }
+  },
+
+  unfriend: async (friendId) => {
+    try {
+      await apiUnfriend(friendId);
+      await get().fetchFriends();
+      toast.success("Unfriended successfully");
+    } catch (error) {
+      toast.error(error?.response?.data?.message || "Error unfriending");
+    }
   },
 }));

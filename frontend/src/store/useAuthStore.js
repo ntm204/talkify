@@ -15,6 +15,23 @@ export const useAuthStore = create((set, get) => ({
   isCheckingAuth: true,
   onlineUsers: [],
   socket: null,
+  notifications: [],
+  unreadCount: 0,
+
+  addNotification: (notification) =>
+    set((state) => {
+      const newNotifications = [notification, ...state.notifications];
+      if (newNotifications.length > 4) newNotifications.length = 4;
+      return {
+        notifications: newNotifications,
+        unreadCount: state.unreadCount + 1,
+      };
+    }),
+  markAllNotificationsRead: () =>
+    set((state) => ({
+      unreadCount: 0,
+      notifications: state.notifications.map((n) => ({ ...n, read: true })),
+    })),
 
   checkAuth: async () => {
     try {
@@ -38,7 +55,7 @@ export const useAuthStore = create((set, get) => ({
       toast.success("Account created successfully");
       get().connectSocket();
     } catch (error) {
-      toast.error(error.response.data.message);
+      toast.error(error.response?.data?.message || "Error creating account");
     } finally {
       set({ isSigningUp: false });
     }
@@ -50,10 +67,9 @@ export const useAuthStore = create((set, get) => ({
       const res = await axiosInstance.post("/auth/login", data);
       set({ authUser: res.data });
       toast.success("Logged in successfully");
-
       get().connectSocket();
     } catch (error) {
-      toast.error(error.response.data.message);
+      toast.error(error.response?.data?.message || "Error logging in");
     } finally {
       set({ isLoggingIn: false });
     }
@@ -66,7 +82,7 @@ export const useAuthStore = create((set, get) => ({
       toast.success("Logged out successfully");
       get().disconnectSocket();
     } catch (error) {
-      toast.error(error.response.data.message);
+      toast.error(error.response?.data?.message || "Error logging out");
     }
   },
 
@@ -78,7 +94,7 @@ export const useAuthStore = create((set, get) => ({
       toast.success("Profile updated successfully");
     } catch (error) {
       console.log("error in update profile:", error);
-      toast.error(error.response.data.message);
+      toast.error(error.response?.data?.message || "Error updating profile");
     } finally {
       set({ isUpdatingProfile: false });
     }
@@ -110,6 +126,40 @@ export const useAuthStore = create((set, get) => ({
 
     socket.on("getOnlineUsers", (userIds) => {
       set({ onlineUsers: userIds });
+    });
+
+    socket.on("friendRequestNotification", (notification) => {
+      get().addNotification(notification);
+    });
+
+    socket.on("friendshipUpdate", (update) => {
+      // Handle real-time friendship updates
+      const { type, request, friendship } = update;
+      console.log("Friendship update received:", type);
+
+      // Trigger appropriate store updates based on type
+      if (
+        type === "new_received_request" ||
+        type === "request_accepted" ||
+        type === "request_declined" ||
+        type === "request_cancelled" ||
+        type === "unfriended"
+      ) {
+        // Refresh friendship data
+        useChatStore.getState().fetchFriends();
+        useChatStore.getState().fetchSentRequests();
+        useChatStore.getState().fetchReceivedRequests();
+      }
+    });
+
+    socket.on("userSettingsUpdate", (update) => {
+      // Handle user settings updates
+      const { userId, allowStrangerMessage } = update;
+      const { authUser } = get();
+
+      if (authUser && authUser._id === userId) {
+        set({ authUser: { ...authUser, allowStrangerMessage } });
+      }
     });
 
     socket.on("connect_error", (err) => {
