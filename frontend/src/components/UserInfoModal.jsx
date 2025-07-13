@@ -112,6 +112,7 @@ const UserInfoModal = ({ user, onClose }) => {
               src={user.profilePic || "/avatar.png"}
               alt={user.fullName}
               className="w-20 h-20 sm:w-24 sm:h-24 rounded-full object-cover shadow-lg border-4 border-base-200"
+              loading="lazy"
             />
             <div className="absolute -bottom-2 -right-2 bg-primary text-primary-content rounded-full p-1.5 sm:p-2 shadow-md">
               <Users size={14} className="sm:w-4 sm:h-4" />

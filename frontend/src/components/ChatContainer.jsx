@@ -102,6 +102,7 @@ const ChatContainer = () => {
                         : selectedUser.profilePic || "/avatar.png"
                     }
                     alt="profile pic"
+                    loading="lazy"
                   />
                 </div>
               </div>
@@ -116,6 +117,7 @@ const ChatContainer = () => {
                     src={message.image}
                     alt="Attachment"
                     className="sm:max-w-[200px] rounded-md mb-2"
+                    loading="lazy"
                   />
                 )}
                 {message.sticker && (
@@ -123,6 +125,7 @@ const ChatContainer = () => {
                     src={message.sticker}
                     alt="Sticker"
                     className="sm:max-w-[100px] rounded-md mb-2"
+                    loading="lazy"
                   />
                 )}
                 {message.text && <p>{message.text}</p>}
@@ -137,6 +140,7 @@ const ChatContainer = () => {
                 <img
                   src={selectedUser.profilePic || "/avatar.png"}
                   alt="profile pic"
+                  loading="lazy"
                 />
               </div>
             </div>

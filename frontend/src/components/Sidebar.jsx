@@ -47,6 +47,7 @@ const UserCard = ({
         src={user.profilePic || "/avatar.png"}
         alt={user.fullName}
         className="w-12 h-12 lg:w-12 lg:h-12 rounded-full object-cover shadow-sm group-hover:shadow-md transition-shadow duration-200"
+        loading="lazy"
       />
       {user.isOnline && (
         <span
@@ -65,27 +66,49 @@ const UserCard = ({
       </div>
       {/* Desktop mới hiện last message */}
       {user.lastMessage && (
-        <div className="hidden lg:block text-sm text-base-content/60 flex items-baseline group-hover:text-base-content/80 transition-colors duration-200">
-          {(() => {
-            const prefix = user.lastMessage.isSentByLoggedInUser ? "You: " : "";
-            let content = "";
-            if (user.lastMessage.text) content = user.lastMessage.text;
-            else if (user.lastMessage.image) content = "📷 Image";
-            else if (user.lastMessage.sticker) content = "😊 Sticker";
-            const fullText = prefix + content;
-            const isTooLong = fullText.length > 20;
-            const displayText = isTooLong
-              ? fullText.slice(0, 20).trim() + "..."
-              : fullText;
-            return (
-              <div className="flex items-baseline text-sm">
-                <span className="truncate flex-1 min-w-0">{displayText}</span>
-                <span className="ml-1 whitespace-nowrap opacity-60">
-                  • {getRelativeTime(user.lastMessage.createdAt)}
-                </span>
-              </div>
-            );
-          })()}
+        <div className="hidden lg:block w-full">
+          <div className="flex items-baseline text-sm text-base-content/60 group-hover:text-base-content/80 transition-colors duration-200">
+            {(() => {
+              const isYou = user.lastMessage.isSentByLoggedInUser;
+              let content = "";
+              if (user.lastMessage.text) content = user.lastMessage.text;
+              else if (user.lastMessage.image)
+                content = isYou
+                  ? "You sent a photo"
+                  : `${user.fullName} sent a photo`;
+              else if (user.lastMessage.sticker)
+                content = isYou
+                  ? "You sent a sticker"
+                  : `${user.fullName} sent a sticker`;
+              else content = "";
+              const MAX_PREVIEW = 22;
+              let displayText = "";
+              if (isYou && user.lastMessage.text) {
+                const prefix = "You: ";
+                const remain = MAX_PREVIEW - prefix.length;
+                displayText =
+                  prefix +
+                  (content.length > remain
+                    ? content.slice(0, remain).trim() + "..."
+                    : content);
+              } else {
+                displayText =
+                  content.length > MAX_PREVIEW
+                    ? content.slice(0, MAX_PREVIEW).trim() + "..."
+                    : content;
+              }
+              return (
+                <>
+                  <span className="truncate max-w-[70%] overflow-hidden text-ellipsis pr-1 align-middle">
+                    {displayText}
+                  </span>
+                  <span className="ml-1 whitespace-nowrap opacity-60 align-middle">
+                    • {getRelativeTime(user.lastMessage.createdAt)}
+                  </span>
+                </>
+              );
+            })()}
+          </div>
         </div>
       )}
     </div>
@@ -123,88 +146,73 @@ const UserCard = ({
 
 const Sidebar = () => {
   const {
-    friends,
-    isFriendsLoading,
-    fetchFriends,
+    users,
+    isUsersLoading,
+    getUsers,
     selectedUser,
     setSelectedUser,
-    globalSearchResults,
-    isGlobalSearchLoading,
-    searchUsersGlobal,
-    sendFriendRequest,
-    sentRequests,
-    fetchSentRequests,
+    friends,
+    fetchFriends,
   } = useChatStore();
   const { onlineUsers } = useAuthStore();
-  const [showOnlineOnly, setShowOnlineOnly] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [tick, setTick] = useState(0);
   const [userInfoModalUser, setUserInfoModalUser] = useState(null);
-  const [sendingRequests, setSendingRequests] = useState(new Set());
+  const [showOnlineOnly, setShowOnlineOnly] = useState(false);
 
-  // Đặt filteredFriends lên trên trước mọi useEffect
-  const filteredFriends = friends
-    .filter((user) => (showOnlineOnly ? onlineUsers.includes(user._id) : true))
-    .filter((user) =>
-      user.fullName.toLowerCase().includes(searchQuery.toLowerCase())
+  useEffect(() => {
+    getUsers();
+    // Đảm bảo luôn fetch friends khi Sidebar mount (kể cả reload)
+    if (!friends || friends.length === 0) {
+      fetchFriends();
+    }
+  }, [getUsers]);
+
+  // Lấy danh sách bạn bè đang online (dựa vào friends và onlineUsers)
+  const onlineFriendIds = friends
+    .filter((f) => onlineUsers.includes(f._id))
+    .map((f) => f._id);
+  const onlineFriendsCount = onlineFriendIds.length;
+
+  // Merge friends với users để lấy lastMessage (nếu có)
+  const friendsWithLastMessage = friends.map((friend) => {
+    const userWithLastMessage = users.find((u) => u._id === friend._id);
+    return userWithLastMessage
+      ? { ...friend, lastMessage: userWithLastMessage.lastMessage }
+      : friend;
+  });
+
+  // Hiển thị tất cả bạn bè (friends), ưu tiên bạn có lastMessage lên trên
+  let filteredFriends = friendsWithLastMessage.filter((user) =>
+    user.fullName.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+  // Nếu bật showOnlineOnly, chỉ hiển thị bạn bè đang online
+  if (showOnlineOnly) {
+    filteredFriends = filteredFriends.filter((user) =>
+      onlineFriendIds.includes(user._id)
     );
-
-  // Đếm số bạn bè online
-  const onlineFriendsCount = friends.filter((f) =>
-    onlineUsers.includes(f._id)
-  ).length;
-
-  useEffect(() => {
-    fetchFriends();
-  }, [fetchFriends]);
-
-  useEffect(() => {
-    if (searchQuery.trim()) {
-      searchUsersGlobal(searchQuery, true);
+  }
+  // Sắp xếp: bạn có lastMessage lên trên, rồi theo thời gian lastMessage, còn lại theo tên
+  filteredFriends = filteredFriends.sort((a, b) => {
+    const aTime = a.lastMessage
+      ? new Date(a.lastMessage.createdAt).getTime()
+      : 0;
+    const bTime = b.lastMessage
+      ? new Date(b.lastMessage.createdAt).getTime()
+      : 0;
+    if (aTime === 0 && bTime === 0) {
+      return a.fullName.localeCompare(b.fullName);
     }
-  }, [searchQuery, friends, searchUsersGlobal]); // Thêm friends vào dependency để refresh khi friends thay đổi
+    return bTime - aTime;
+  });
 
-  // Auto-refresh friends list periodically for real-time updates
-  // Xóa interval auto-refresh friends list
-
-  const handleSendFriendRequest = async (userId) => {
-    setSendingRequests((prev) => new Set(prev).add(userId));
-    try {
-      await sendFriendRequest(userId);
-      // Refresh sent requests to update UI
-      await fetchSentRequests();
-    } catch (error) {
-      console.error("Error sending friend request:", error);
-    } finally {
-      setSendingRequests((prev) => {
-        const newSet = new Set(prev);
-        newSet.delete(userId);
-        return newSet;
-      });
-    }
-  };
-
-  const handleUserClick = (user) => {
-    setSelectedUser(user);
-    // Clear search when selecting a user
-    setSearchQuery("");
-  };
-
-  const handleAvatarClick = (e, user) => {
-    e.stopPropagation();
-    setUserInfoModalUser(user);
-  };
-
-  if (isFriendsLoading) return <SidebarSkeleton />;
+  if (isUsersLoading) return <SidebarSkeleton />;
 
   return (
     <aside className="h-full w-20 lg:w-72 border-r border-base-300 flex flex-col transition-all duration-200 font-sans bg-base-100 overflow-y-auto scrollbar-thin scrollbar-thumb-base-300 scrollbar-track-base-200">
       <div className="border-b border-base-300 w-full p-5">
         <div className="flex items-center gap-2">
           <Users className="size-6" />
-          <span className="font-semibold text-lg hidden lg:block">
-            Contacts
-          </span>
+          <span className="font-semibold text-lg hidden lg:block">Chats</span>
         </div>
         <div className="hidden lg:block">
           <SearchBar
@@ -228,67 +236,22 @@ const Sidebar = () => {
           </span>
         </div>
       </div>
-
       <div className="overflow-y-auto w-full py-3">
+        {filteredFriends.length === 0 && (
+          <div className="text-center text-base-content/60 py-4 text-sm">
+            No friends yet
+          </div>
+        )}
         {filteredFriends.map((user) => (
           <UserCard
             key={user._id}
             user={{ ...user, isOnline: onlineUsers.includes(user._id) }}
             isFriend={true}
             onShowInfo={setUserInfoModalUser}
-            onSelect={handleUserClick}
+            onSelect={setSelectedUser}
           />
         ))}
-
-        {searchQuery.trim() && (
-          <div>
-            {isGlobalSearchLoading ? (
-              <div className="text-center text-base-content/60 py-4 text-sm">
-                Searching...
-              </div>
-            ) : globalSearchResults.length === 0 ? (
-              <div className="text-center text-base-content/60 py-4 text-sm">
-                No users found
-              </div>
-            ) : (
-              <ul className="space-y-2">
-                {globalSearchResults
-                  .filter((user) => !friends.some((f) => f._id === user._id)) // Loại bỏ friends khỏi search results
-                  .map((user) => {
-                    // Xác định trạng thái quan hệ
-                    let status = "add";
-                    if (
-                      sentRequests.some((req) => req.recipient._id === user._id)
-                    )
-                      status = "sent";
-
-                    return (
-                      <UserCard
-                        key={user._id}
-                        user={{
-                          ...user,
-                          isOnline: onlineUsers.includes(user._id),
-                        }}
-                        isFriend={false}
-                        status={status}
-                        loading={sendingRequests.has(user._id)}
-                        onAddFriend={handleSendFriendRequest}
-                        onShowInfo={setUserInfoModalUser}
-                        onSelect={setSelectedUser}
-                      />
-                    );
-                  })}
-              </ul>
-            )}
-          </div>
-        )}
-        {filteredFriends.length === 0 && !searchQuery.trim() && (
-          <div className="text-center text-base-content/60 py-4 text-sm">
-            No friends found
-          </div>
-        )}
       </div>
-
       {userInfoModalUser && (
         <UserInfoModal
           user={userInfoModalUser}

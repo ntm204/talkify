@@ -1,5 +1,7 @@
 import Friendship from "../models/friendship.model.js";
 import User from "../models/user.model.js";
+import { createFriendshipNotification } from "./notification.controller.js";
+import { sendFriendshipUpdate } from "../lib/socket.js";
 
 // Gửi lời mời kết bạn
 export const sendFriendRequest = async (req, res) => {
@@ -11,6 +13,7 @@ export const sendFriendRequest = async (req, res) => {
         .status(400)
         .json({ message: "Cannot send friend request to yourself." });
     }
+
     // Kiểm tra đã có lời mời hoặc đã là bạn bè chưa
     const existing = await Friendship.findOne({
       $or: [
@@ -18,50 +21,75 @@ export const sendFriendRequest = async (req, res) => {
         { requester: recipientId, recipient: requesterId },
       ],
     });
+
     if (existing) {
-      return res
-        .status(400)
-        .json({
-          message: "Friend request already exists or you are already friends.",
+      // Nếu đã là bạn bè
+      if (existing.status === "accepted") {
+        return res.status(400).json({
+          message: "You are already friends with this user.",
         });
+      }
+
+      // Nếu có lời mời pending từ người khác
+      if (existing.status === "pending") {
+      return res.status(400).json({
+        message: "Friend request already exists or you are already friends.",
+      });
     }
+
+      // Nếu có lời mời đã từ chối, cập nhật thành pending
+      if (existing.status === "declined") {
+        existing.status = "pending";
+        await existing.save();
+
+        // Tạo thông báo cho người nhận
+        await createFriendshipNotification(
+          recipientId,
+          requesterId,
+          "friend_request",
+          existing._id
+        );
+
+        // Populate user info for real-time updates
+        const populatedRequest = await Friendship.findById(existing._id)
+          .populate("requester", "fullName profilePic")
+          .populate("recipient", "fullName profilePic");
+
+        // Emit real-time updates
+        sendFriendshipUpdate([recipientId, requesterId], {
+          type: "new_friend_request",
+          request: populatedRequest,
+        });
+
+        return res.status(200).json(populatedRequest);
+      }
+    }
+
+    // Tạo lời mời mới
     const request = await Friendship.create({
       requester: requesterId,
       recipient: recipientId,
     });
+
+    // Tạo thông báo cho người nhận
+    await createFriendshipNotification(
+      recipientId,
+      requesterId,
+      "friend_request",
+      request._id
+    );
 
     // Populate user info for real-time updates
     const populatedRequest = await Friendship.findById(request._id)
       .populate("requester", "fullName profilePic")
       .populate("recipient", "fullName profilePic");
 
-    // Emit socket notification to recipient (safe)
-    try {
-      const { io, getReceiverSocketId } = await import("../lib/socket.js");
-      const recipientSocketId = getReceiverSocketId(recipientId);
-      if (recipientSocketId) {
-        io.to(recipientSocketId).emit("friendRequestNotification", {
-          type: "friend_request",
-          from: requesterId,
-          timestamp: new Date(),
-        });
-        // Emit real-time update for received requests
-        io.to(recipientSocketId).emit("friendshipUpdate", {
-          type: "new_received_request",
-          request: populatedRequest,
-        });
-      }
-      // Emit real-time update for sent requests
-      const requesterSocketId = getReceiverSocketId(requesterId);
-      if (requesterSocketId) {
-        io.to(requesterSocketId).emit("friendshipUpdate", {
-          type: "new_sent_request",
-          request: populatedRequest,
-        });
-      }
-    } catch (socketError) {
-      console.log("Socket notification failed:", socketError.message);
-    }
+    // Emit real-time updates
+    sendFriendshipUpdate([recipientId, requesterId], {
+      type: "new_friend_request",
+      request: populatedRequest,
+    });
+
     res.status(201).json(populatedRequest);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -85,33 +113,20 @@ export const acceptFriendRequest = async (req, res) => {
       return res.status(404).json({ message: "Friend request not found." });
     }
 
-    // Emit socket notification to requester (safe)
-    try {
-      const { io, getReceiverSocketId } = await import("../lib/socket.js");
-      const requesterSocketId = getReceiverSocketId(requesterId);
-      if (requesterSocketId) {
-        io.to(requesterSocketId).emit("friendRequestNotification", {
-          type: "friend_accept",
-          from: recipientId,
-          timestamp: new Date(),
-        });
-        // Emit real-time updates
-        io.to(requesterSocketId).emit("friendshipUpdate", {
-          type: "request_accepted",
-          friendship,
-        });
-      }
-      // Emit real-time updates to recipient
-      const recipientSocketId = getReceiverSocketId(recipientId);
-      if (recipientSocketId) {
-        io.to(recipientSocketId).emit("friendshipUpdate", {
-          type: "request_accepted",
-          friendship,
-        });
-      }
-    } catch (socketError) {
-      console.log("Socket notification failed:", socketError.message);
-    }
+    // Tạo thông báo cho người gửi lời mời
+    await createFriendshipNotification(
+      requesterId,
+      recipientId,
+      "friend_accepted",
+      friendship._id
+    );
+
+    // Emit real-time updates
+    sendFriendshipUpdate([requesterId, recipientId], {
+      type: "request_accepted",
+      friendship,
+    });
+
     res.json(friendship);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -132,27 +147,19 @@ export const declineFriendRequest = async (req, res) => {
       return res.status(404).json({ message: "Friend request not found." });
     }
 
-    // Emit real-time updates
-    try {
-      const { io, getReceiverSocketId } = await import("../lib/socket.js");
-      const requesterSocketId = getReceiverSocketId(requesterId);
-      const recipientSocketId = getReceiverSocketId(recipientId);
+    // Tạo thông báo cho người gửi lời mời
+    await createFriendshipNotification(
+      requesterId,
+      recipientId,
+      "friend_declined",
+      friendship._id
+    );
 
-      if (requesterSocketId) {
-        io.to(requesterSocketId).emit("friendshipUpdate", {
-          type: "request_declined",
-          friendship,
-        });
-      }
-      if (recipientSocketId) {
-        io.to(recipientSocketId).emit("friendshipUpdate", {
-          type: "request_declined",
-          friendship,
-        });
-      }
-    } catch (socketError) {
-      console.log("Socket notification failed:", socketError.message);
-    }
+    // Emit real-time updates
+    sendFriendshipUpdate([requesterId, recipientId], {
+      type: "request_declined",
+      friendship,
+    });
 
     res.json(friendship);
   } catch (err) {
@@ -175,26 +182,10 @@ export const cancelFriendRequest = async (req, res) => {
     }
 
     // Emit real-time updates
-    try {
-      const { io, getReceiverSocketId } = await import("../lib/socket.js");
-      const requesterSocketId = getReceiverSocketId(requesterId);
-      const recipientSocketId = getReceiverSocketId(recipientId);
-
-      if (requesterSocketId) {
-        io.to(requesterSocketId).emit("friendshipUpdate", {
-          type: "request_cancelled",
-          friendship,
-        });
-      }
-      if (recipientSocketId) {
-        io.to(recipientSocketId).emit("friendshipUpdate", {
-          type: "request_cancelled",
-          friendship,
-        });
-      }
-    } catch (socketError) {
-      console.log("Socket notification failed:", socketError.message);
-    }
+    sendFriendshipUpdate([requesterId, recipientId], {
+      type: "request_cancelled",
+      friendship,
+    });
 
     res.json({ message: "Friend request cancelled successfully." });
   } catch (err) {
@@ -308,26 +299,10 @@ export const unfriend = async (req, res) => {
     }
 
     // Emit real-time updates
-    try {
-      const { io, getReceiverSocketId } = await import("../lib/socket.js");
-      const requesterSocketId = getReceiverSocketId(userId);
-      const recipientSocketId = getReceiverSocketId(friendId);
-
-      if (requesterSocketId) {
-        io.to(requesterSocketId).emit("friendshipUpdate", {
-          type: "unfriended",
-          friendship,
-        });
-      }
-      if (recipientSocketId) {
-        io.to(recipientSocketId).emit("friendshipUpdate", {
-          type: "unfriended",
-          friendship,
-        });
-      }
-    } catch (socketError) {
-      console.log("Socket notification failed:", socketError.message);
-    }
+    sendFriendshipUpdate([userId, friendId], {
+      type: "unfriended",
+      friendship,
+    });
 
     res.json({ message: "Unfriended successfully." });
   } catch (err) {

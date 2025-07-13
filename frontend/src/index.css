@@ -29,6 +29,46 @@
   animation: slideDown 0.3s ease-out forwards;
 }
 
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+}
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease-out;
+}
+.animate-fadeOut {
+  animation: fadeOut 0.3s ease-out forwards;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
 body {
   font-family: "Inter", sans-serif;
 }
@@ -169,4 +209,32 @@ body {
 }
 .user-card-clickable:hover {
   background: #f1f5ff;
+}
+
+/* Notification styles */
+.notification-badge {
+  transition: all 0.3s ease;
+}
+.notification-badge:hover {
+  transform: scale(1.1);
+}
+
+.notification-dropdown {
+  backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.95);
+}
+
+/* Scrollbar styles for notification dropdown */
+.notification-dropdown::-webkit-scrollbar {
+  width: 4px;
+}
+.notification-dropdown::-webkit-scrollbar-track {
+  background: transparent;
+}
+.notification-dropdown::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 2px;
+}
+.notification-dropdown::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.3);
 }

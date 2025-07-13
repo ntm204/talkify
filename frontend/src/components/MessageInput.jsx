@@ -135,6 +135,7 @@ const MessageInput = () => {
               src={imagePreview}
               alt="Preview"
               className="w-20 h-20 object-cover rounded-lg border border-zinc-700"
+              loading="lazy"
             />
             <button
               onClick={removeImage}
@@ -159,6 +160,7 @@ const MessageInput = () => {
               alt={`Sticker ${index + 1}`}
               className="w-12 h-12 cursor-pointer"
               onClick={() => handleSendSticker(stickerPath)}
+              loading="lazy"
             />
           ))}
         </div>

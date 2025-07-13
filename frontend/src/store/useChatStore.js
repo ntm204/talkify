@@ -120,6 +120,7 @@ export const useChatStore = create((set, get) => ({
           ? newMessage.receiverId
           : newMessage.senderId;
 
+      // Cập nhật messages nếu đang mở đúng cuộc trò chuyện
       if (
         selectedUser &&
         (newMessage.senderId === selectedUser._id ||
@@ -136,31 +137,36 @@ export const useChatStore = create((set, get) => ({
         }
       }
 
-      // Update users list with new message
-      const updatedUsers = users
-        .map((user) =>
-          user._id === relatedUserId
-            ? {
-                ...user,
-                lastMessage: {
-                  text: newMessage.text,
-                  image: newMessage.image,
-                  sticker: newMessage.sticker,
-                  createdAt: newMessage.createdAt,
-                  isSentByLoggedInUser: newMessage.senderId === loggedInUserId,
-                },
-              }
-            : user
-        )
-        .sort((a, b) => {
-          const aTime = a.lastMessage
-            ? new Date(a.lastMessage.createdAt).getTime()
-            : 0;
-          const bTime = b.lastMessage
-            ? new Date(b.lastMessage.createdAt).getTime()
-            : 0;
-          return bTime - aTime;
-        });
+      // Tạo preview cho lastMessage
+      let previewText = "";
+      if (newMessage.text) previewText = newMessage.text;
+      else if (newMessage.image) previewText = "[Photo]";
+      else if (newMessage.sticker) previewText = "[Sticker]";
+      // Nếu có unsent, bạn có thể bổ sung logic ở đây
+
+      // Update users list: đẩy user có tin nhắn mới lên đầu
+      let updatedUsers = users.map((user) => {
+        if (user._id === relatedUserId) {
+          return {
+            ...user,
+            lastMessage: {
+              text: newMessage.text,
+              image: newMessage.image,
+              sticker: newMessage.sticker,
+              createdAt: newMessage.createdAt,
+              isSentByLoggedInUser: newMessage.senderId === loggedInUserId,
+              // previewText: previewText, // nếu muốn dùng trực tiếp
+            },
+          };
+        }
+        return user;
+      });
+      // Đẩy user có tin nhắn mới lên đầu
+      const idx = updatedUsers.findIndex((u) => u._id === relatedUserId);
+      if (idx > -1) {
+        const [userToTop] = updatedUsers.splice(idx, 1);
+        updatedUsers = [userToTop, ...updatedUsers];
+      }
       set((state) => ({ users: [...updatedUsers] }));
     });
 

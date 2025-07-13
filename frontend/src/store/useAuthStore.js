@@ -20,18 +20,77 @@ export const useAuthStore = create((set, get) => ({
 
   addNotification: (notification) =>
     set((state) => {
-      const newNotifications = [notification, ...state.notifications];
-      if (newNotifications.length > 4) newNotifications.length = 4;
+      // Kiểm tra xem notification đã tồn tại chưa
+      const existingIndex = state.notifications.findIndex(
+        (n) => n._id === notification._id
+      );
+
+      let newNotifications;
+      if (existingIndex !== -1) {
+        // Cập nhật notification hiện có
+        newNotifications = [...state.notifications];
+        newNotifications[existingIndex] = notification;
+      } else {
+        // Thêm notification mới
+        newNotifications = [notification, ...state.notifications];
+        if (newNotifications.length > 4) newNotifications.length = 4;
+      }
+
       return {
         notifications: newNotifications,
-        unreadCount: state.unreadCount + 1,
+        unreadCount: notification.isRead
+          ? state.unreadCount
+          : state.unreadCount + 1,
       };
     }),
-  markAllNotificationsRead: () =>
-    set((state) => ({
-      unreadCount: 0,
-      notifications: state.notifications.map((n) => ({ ...n, read: true })),
-    })),
+
+  markAllNotificationsRead: async () => {
+    try {
+      await axiosInstance.patch("/notifications/mark-all-read");
+      set((state) => ({
+        unreadCount: 0,
+        notifications: state.notifications.map((n) => ({ ...n, isRead: true })),
+      }));
+    } catch (error) {
+      console.error("Error marking notifications as read:", error);
+    }
+  },
+
+  markNotificationAsRead: async (notificationId) => {
+    try {
+      await axiosInstance.patch(`/notifications/${notificationId}/read`);
+      set((state) => ({
+        notifications: state.notifications.map((n) =>
+          n._id === notificationId ? { ...n, isRead: true } : n
+        ),
+        unreadCount: Math.max(0, state.unreadCount - 1),
+      }));
+    } catch (error) {
+      console.error("Error marking notification as read:", error);
+    }
+  },
+
+  fetchNotifications: async () => {
+    try {
+      const res = await axiosInstance.get("/notifications");
+      set({ notifications: res.data });
+    } catch (error) {
+      console.error("Error fetching notifications:", error);
+    }
+  },
+
+  fetchUnreadCount: async () => {
+    try {
+      const res = await axiosInstance.get("/notifications/unread-count");
+      set({ unreadCount: res.data.count });
+    } catch (error) {
+      console.error("Error fetching unread count:", error);
+    }
+  },
+
+  clearNotifications: () => {
+    set({ notifications: [], unreadCount: 0 });
+  },
 
   checkAuth: async () => {
     try {
@@ -78,7 +137,7 @@ export const useAuthStore = create((set, get) => ({
   logout: async () => {
     try {
       await axiosInstance.post("/auth/logout");
-      set({ authUser: null });
+      set({ authUser: null, notifications: [], unreadCount: 0 });
       toast.success("Logged out successfully");
       get().disconnectSocket();
     } catch (error) {
@@ -116,6 +175,9 @@ export const useAuthStore = create((set, get) => ({
     socket.on("connect", () => {
       console.log("Socket connected:", socket.id);
       useChatStore.getState().subscribeToMessages();
+      // Fetch notifications when socket connects
+      get().fetchNotifications();
+      get().fetchUnreadCount();
     });
 
     socket.on("disconnect", () => {
@@ -129,7 +191,15 @@ export const useAuthStore = create((set, get) => ({
     });
 
     socket.on("friendRequestNotification", (notification) => {
+      console.log("Received notification:", notification);
       get().addNotification(notification);
+    });
+
+    socket.on("allNotificationsRead", () => {
+      set((state) => ({
+        unreadCount: 0,
+        notifications: state.notifications.map((n) => ({ ...n, isRead: true })),
+      }));
     });
 
     socket.on("friendshipUpdate", (update) => {
@@ -139,7 +209,7 @@ export const useAuthStore = create((set, get) => ({
 
       // Trigger appropriate store updates based on type
       if (
-        type === "new_received_request" ||
+        type === "new_friend_request" ||
         type === "request_accepted" ||
         type === "request_declined" ||
         type === "request_cancelled" ||
