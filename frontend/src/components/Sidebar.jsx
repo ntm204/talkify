@@ -99,9 +99,11 @@ const UserCard = ({
               }
               return (
                 <>
+                  {/* Nội dung tin nhắn cuối, rút gọn nếu dài */}
                   <span className="truncate max-w-[70%] overflow-hidden text-ellipsis pr-1 align-middle">
                     {displayText}
                   </span>
+                  {/* Thời gian gửi tin nhắn cuối */}
                   <span className="ml-1 whitespace-nowrap opacity-60 align-middle">
                     • {getRelativeTime(user.lastMessage.createdAt)}
                   </span>
@@ -161,19 +163,19 @@ const Sidebar = () => {
 
   useEffect(() => {
     getUsers();
-    // Đảm bảo luôn fetch friends khi Sidebar mount (kể cả reload)
+    // Nếu chưa có danh sách bạn bè thì fetch
     if (!friends || friends.length === 0) {
       fetchFriends();
     }
   }, [getUsers]);
 
-  // Lấy danh sách bạn bè đang online (dựa vào friends và onlineUsers)
+  // Lấy danh sách ID bạn bè đang online
   const onlineFriendIds = friends
     .filter((f) => onlineUsers.includes(f._id))
     .map((f) => f._id);
   const onlineFriendsCount = onlineFriendIds.length;
 
-  // Merge friends với users để lấy lastMessage (nếu có)
+  // Gắn lastMessage vào từng bạn bè nếu có
   const friendsWithLastMessage = friends.map((friend) => {
     const userWithLastMessage = users.find((u) => u._id === friend._id);
     return userWithLastMessage
@@ -181,17 +183,17 @@ const Sidebar = () => {
       : friend;
   });
 
-  // Hiển thị tất cả bạn bè (friends), ưu tiên bạn có lastMessage lên trên
+  // Lọc bạn bè theo search và trạng thái online
   let filteredFriends = friendsWithLastMessage.filter((user) =>
     user.fullName.toLowerCase().includes(searchQuery.toLowerCase())
   );
-  // Nếu bật showOnlineOnly, chỉ hiển thị bạn bè đang online
   if (showOnlineOnly) {
     filteredFriends = filteredFriends.filter((user) =>
       onlineFriendIds.includes(user._id)
     );
   }
-  // Sắp xếp: bạn có lastMessage lên trên, rồi theo thời gian lastMessage, còn lại theo tên
+
+  // Sắp xếp bạn bè: ưu tiên có lastMessage mới nhất, sau đó theo tên
   filteredFriends = filteredFriends.sort((a, b) => {
     const aTime = a.lastMessage
       ? new Date(a.lastMessage.createdAt).getTime()

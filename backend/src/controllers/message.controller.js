@@ -1,12 +1,11 @@
-// message.controller.js
 import User from "../models/user.model.js";
 import Message from "../models/message.model.js";
 import cloudinary from "../lib/cloudinary.js";
 import { getReceiverSocketId, io } from "../lib/socket.js";
 import Friendship from "../models/friendship.model.js";
 
+// Lấy danh sách user (trừ bản thân) kèm tin nhắn cuối cho sidebar
 export const getUsersForSidebar = async (req, res) => {
-  // Fetch users excluding the logged-in user and include last message
   try {
     const loggedInUserId = req.user._id;
     const filteredUsers = await User.find({
@@ -44,6 +43,7 @@ export const getUsersForSidebar = async (req, res) => {
   }
 };
 
+// Lấy toàn bộ tin nhắn giữa hai user
 export const getMessages = async (req, res) => {
   try {
     const { id: userToChatId } = req.params;
@@ -61,13 +61,13 @@ export const getMessages = async (req, res) => {
   }
 };
 
+// Gửi tin nhắn giữa hai user, kiểm tra quyền gửi
 export const sendMessage = async (req, res) => {
   try {
     const { text, image, sticker } = req.body;
     const { id: receiverId } = req.params;
     const senderId = req.user._id;
 
-    // Kiểm tra quyền nhắn tin (cải thiện logic)
     let canSend = false;
     let reason = "";
 

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useChatStore } from "../store/useChatStore";
 import { useAuthStore } from "../store/useAuthStore";
@@ -18,14 +18,15 @@ const TABS = [
   { key: "friends", label: "Friends", icon: Users },
   { key: "received", label: "Received", icon: UserPlus },
   { key: "sent", label: "Sent", icon: UserCheck },
-  { key: "search", label: "Search", icon: Search }, // Thêm tab Search
+  { key: "search", label: "Search", icon: Search },
 ];
 
+// Trang quản lý bạn bè, lời mời, tìm kiếm bạn mới
 const FriendsPage = () => {
   const [tab, setTab] = useState("friends");
   const [searchFriendsQuery, setSearchFriendsQuery] = useState("");
   const [searchAllQuery, setSearchAllQuery] = useState("");
-  const [searchResults, setSearchResults] = useState([]); // Kết quả tìm kiếm user
+  const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const navigate = useNavigate();
   const {
@@ -43,17 +44,18 @@ const FriendsPage = () => {
     cancelFriendRequest,
     unfriend,
     setSelectedUser,
-    sendFriendRequest, // Thêm hàm gửi lời mời
+    sendFriendRequest,
   } = useChatStore();
   const { onlineUsers, authUser } = useAuthStore();
-  const [pendingActionIds, setPendingActionIds] = useState([]); // Lưu các userId đang xử lý
+  const [pendingActionIds, setPendingActionIds] = useState([]);
+  const debounceTimeout = useRef(null);
 
-  // Filter friends based on searchFriendsQuery
+  // Lọc bạn bè theo ô tìm kiếm
   const filteredFriends = friends.filter((friend) =>
     friend.fullName.toLowerCase().includes(searchFriendsQuery.toLowerCase())
   );
 
-  // Xử lý tìm kiếm user toàn hệ thống (trừ bản thân và bạn bè đã có)
+  // Tìm kiếm user toàn hệ thống (debounce)
   useEffect(() => {
     if (tab !== "search" || !searchAllQuery.trim()) {
       setSearchResults([]);
@@ -61,22 +63,26 @@ const FriendsPage = () => {
     }
     let ignore = false;
     setIsSearching(true);
-    // Gọi API tìm kiếm user
-    (async () => {
-      try {
-        const data = await searchUsersApi(searchAllQuery, true);
-        if (!ignore) setSearchResults(data || []);
-      } catch (e) {
-        if (!ignore) setSearchResults([]);
-      } finally {
-        if (!ignore) setIsSearching(false);
-      }
-    })();
+    if (debounceTimeout.current) clearTimeout(debounceTimeout.current);
+    debounceTimeout.current = setTimeout(() => {
+      (async () => {
+        try {
+          const data = await searchUsersApi(searchAllQuery, true);
+          if (!ignore) setSearchResults(data || []);
+        } catch (e) {
+          if (!ignore) setSearchResults([]);
+        } finally {
+          if (!ignore) setIsSearching(false);
+        }
+      })();
+    }, 400); // 400ms debounce
     return () => {
       ignore = true;
+      if (debounceTimeout.current) clearTimeout(debounceTimeout.current);
     };
   }, [tab, searchAllQuery]);
 
+  // Lấy danh sách bạn bè và lời mời khi vào trang
   useEffect(() => {
     fetchFriends();
     fetchSentRequests();
@@ -84,35 +90,29 @@ const FriendsPage = () => {
     // eslint-disable-next-line
   }, []);
 
-  // Helper để kiểm tra trạng thái gửi/cancel/accept/decline
+  // Kiểm tra user đang pending thao tác
   const isPending = (userId) => pendingActionIds.includes(userId);
 
+  // Gửi lời mời kết bạn
   const handleSendFriendRequest = async (userId) => {
     setPendingActionIds((ids) => [...ids, userId]);
     try {
       await sendFriendRequest(userId);
-      // Cập nhật UI ngay: chuyển thẻ sang trạng thái "sent"
       setSearchResults((results) =>
         results.map((u) => (u._id === userId ? { ...u, _justSent: true } : u))
       );
     } catch (error) {
       const errorMessage =
         error?.response?.data?.message || "Error sending friend request";
-
-      // Xử lý các trường hợp lỗi cụ thể
       if (errorMessage.includes("already friends")) {
-        // Nếu đã là bạn bè, cập nhật UI để hiển thị trạng thái friend
         setSearchResults((results) =>
           results.map((u) => (u._id === userId ? { ...u, _isFriend: true } : u))
         );
       } else if (errorMessage.includes("already exists")) {
-        // Nếu đã có lời mời pending, cập nhật UI để hiển thị trạng thái sent
         setSearchResults((results) =>
           results.map((u) => (u._id === userId ? { ...u, _justSent: true } : u))
         );
       }
-
-      // Hiển thị thông báo lỗi ngắn gọn
       if (
         !errorMessage.includes("already friends") &&
         !errorMessage.includes("already exists")
@@ -121,15 +121,15 @@ const FriendsPage = () => {
       }
     } finally {
       setPendingActionIds((ids) => ids.filter((id) => id !== userId));
-      fetchSentRequests(); // Đảm bảo đồng bộ với backend
+      fetchSentRequests();
     }
   };
 
+  // Hủy lời mời đã gửi
   const handleCancelRequest = async (userId) => {
     setPendingActionIds((ids) => [...ids, userId]);
     try {
       await cancelFriendRequest(userId);
-      // Cập nhật UI ngay: xóa khỏi sentRequests
       setSearchResults((results) =>
         results.map((u) => (u._id === userId ? { ...u, _justSent: false } : u))
       );
@@ -139,11 +139,11 @@ const FriendsPage = () => {
     }
   };
 
+  // Chấp nhận lời mời
   const handleAcceptRequest = async (userId) => {
     setPendingActionIds((ids) => [...ids, userId]);
     try {
       await acceptFriendRequest(userId);
-      // Cập nhật UI ngay: xóa khỏi receivedRequests
     } finally {
       setPendingActionIds((ids) => ids.filter((id) => id !== userId));
       fetchReceivedRequests();
@@ -151,17 +151,18 @@ const FriendsPage = () => {
     }
   };
 
+  // Từ chối lời mời
   const handleDeclineRequest = async (userId) => {
     setPendingActionIds((ids) => [...ids, userId]);
     try {
       await declineFriendRequest(userId);
-      // Cập nhật UI ngay: xóa khỏi receivedRequests
     } finally {
       setPendingActionIds((ids) => ids.filter((id) => id !== userId));
       fetchReceivedRequests();
     }
   };
 
+  // Hủy kết bạn
   const handleUnfriend = async (friendId) => {
     try {
       await unfriend(friendId);
@@ -170,18 +171,20 @@ const FriendsPage = () => {
     }
   };
 
+  // Nhắn tin với bạn bè
   const handleMessageFriend = (friend) => {
     setSelectedUser(friend);
     navigate("/");
   };
 
+  // Chuyển sang trang tìm bạn
   const handleFindFriends = () => {
     navigate("/");
   };
 
+  // Card hiển thị user trong danh sách bạn bè, lời mời, tìm kiếm
   const UserCard = ({ user, type = "friend", onAction }) => {
     const isOnline = onlineUsers.includes(user._id);
-    // Nếu là search, xác định trạng thái dựa vào store (ưu tiên store hơn state tạm)
     let isSent = false;
     let isFriend = false;
     if (type === "search") {
@@ -299,6 +302,7 @@ const FriendsPage = () => {
     );
   };
 
+  // Skeleton loading cho danh sách user
   const LoadingSkeleton = () => (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       {[1, 2, 3, 4, 5, 6].map((i) => (
@@ -325,14 +329,10 @@ const FriendsPage = () => {
     </div>
   );
 
-  // Khi chuyển tab, không giữ lại giá trị search của tab trước
+  // Đổi tab, reset search phù hợp
   const handleTabChange = (tabKey) => {
     setTab(tabKey);
-    // Nếu chuyển sang friends thì không reset searchFriendsQuery, chỉ reset searchAllQuery
-    // Nếu chuyển sang search thì không reset searchAllQuery, chỉ reset searchFriendsQuery
-    // Nếu muốn reset cả 2 khi chuyển tab, bỏ comment dưới:
-    // setSearchFriendsQuery("");
-    // setSearchAllQuery("");
+    // Có thể reset searchFriendsQuery/searchAllQuery tại đây nếu muốn
   };
 
   return (
@@ -490,7 +490,6 @@ const FriendsPage = () => {
                             type="search"
                             onAction={async (userId) => {
                               await handleSendFriendRequest(userId);
-                              // Optionally: refresh search results or sentRequests
                             }}
                           />
                         ))}

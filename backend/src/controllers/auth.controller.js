@@ -3,6 +3,7 @@ import User from "../models/user.model.js";
 import bcrypt from "bcryptjs";
 import cloudinary from "../lib/cloudinary.js";
 
+// Đăng ký tài khoản mới
 export const signup = async (req, res) => {
   const { fullName, email, password } = req.body;
   try {
@@ -49,6 +50,7 @@ export const signup = async (req, res) => {
   }
 };
 
+// Đăng nhập
 export const login = async (req, res) => {
   const { email, password } = req.body;
   try {
@@ -77,6 +79,7 @@ export const login = async (req, res) => {
   }
 };
 
+// Đăng xuất
 export const logout = (req, res) => {
   try {
     res.cookie("jwt", "", { maxAge: 0 });
@@ -87,6 +90,7 @@ export const logout = (req, res) => {
   }
 };
 
+// Cập nhật ảnh đại diện
 export const updateProfile = async (req, res) => {
   try {
     const { profilePic } = req.body;
@@ -110,6 +114,7 @@ export const updateProfile = async (req, res) => {
   }
 };
 
+// Cập nhật cho phép nhận tin nhắn từ người lạ
 export const updateAllowStrangerMessage = async (req, res) => {
   try {
     const { allowStrangerMessage } = req.body;
@@ -143,6 +148,7 @@ export const updateAllowStrangerMessage = async (req, res) => {
   }
 };
 
+// Kiểm tra đăng nhập
 export const checkAuth = (req, res) => {
   try {
     res.status(200).json(req.user);
@@ -152,6 +158,7 @@ export const checkAuth = (req, res) => {
   }
 };
 
+// Tìm kiếm user theo tên
 export const searchUsers = async (req, res) => {
   try {
     const { query, excludeFriends } = req.query;

@@ -81,7 +81,7 @@ export const useChatStore = create((set, get) => ({
                 lastMessage: {
                   text: newMessage.text,
                   image: newMessage.image,
-                  sticker: newMessage.sticker, // Thêm sticker vào đây
+                  sticker: newMessage.sticker,
                   createdAt: newMessage.createdAt,
                   isSentByLoggedInUser: true,
                 },
@@ -120,7 +120,6 @@ export const useChatStore = create((set, get) => ({
           ? newMessage.receiverId
           : newMessage.senderId;
 
-      // Cập nhật messages nếu đang mở đúng cuộc trò chuyện
       if (
         selectedUser &&
         (newMessage.senderId === selectedUser._id ||
@@ -155,7 +154,6 @@ export const useChatStore = create((set, get) => ({
               sticker: newMessage.sticker,
               createdAt: newMessage.createdAt,
               isSentByLoggedInUser: newMessage.senderId === loggedInUserId,
-              // previewText: previewText, // nếu muốn dùng trực tiếp
             },
           };
         }
@@ -345,7 +343,6 @@ export const useChatStore = create((set, get) => ({
     try {
       await apiSendFriendRequest(recipientId);
       toast.success("Friend request sent");
-      // Có thể fetch lại sentRequests nếu muốn
     } catch (error) {
       toast.error(
         error?.response?.data?.message || "Error sending friend request"

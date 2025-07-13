@@ -3,8 +3,9 @@ import User from "../models/user.model.js";
 import { createFriendshipNotification } from "./notification.controller.js";
 import { sendFriendshipUpdate } from "../lib/socket.js";
 
-// Gửi lời mời kết bạn
+// Gửi lời mời kết bạn giữa hai user
 export const sendFriendRequest = async (req, res) => {
+  // Kiểm tra điều kiện hợp lệ, trạng thái hiện tại, gửi thông báo và realtime update
   try {
     const { recipientId } = req.body;
     const requesterId = req.user._id;
@@ -98,6 +99,7 @@ export const sendFriendRequest = async (req, res) => {
 
 // Chấp nhận lời mời kết bạn
 export const acceptFriendRequest = async (req, res) => {
+  // Cập nhật trạng thái, gửi thông báo và realtime update
   try {
     const { requesterId } = req.body;
     const recipientId = req.user._id;
@@ -135,6 +137,7 @@ export const acceptFriendRequest = async (req, res) => {
 
 // Từ chối lời mời kết bạn
 export const declineFriendRequest = async (req, res) => {
+  // Cập nhật trạng thái, realtime update, không gửi thông báo
   try {
     const { requesterId } = req.body;
     const recipientId = req.user._id;
@@ -159,8 +162,9 @@ export const declineFriendRequest = async (req, res) => {
   }
 };
 
-// Hủy lời mời đã gửi
+// Hủy lời mời kết bạn đã gửi
 export const cancelFriendRequest = async (req, res) => {
+  // Chỉ người gửi mới được hủy, xóa bản ghi và realtime update
   try {
     const { recipientId } = req.body;
     const requesterId = req.user._id;
@@ -187,6 +191,7 @@ export const cancelFriendRequest = async (req, res) => {
 
 // Lấy danh sách bạn bè
 export const getFriends = async (req, res) => {
+  // Trả về danh sách user đã là bạn bè với user hiện tại
   try {
     const userId = req.user._id;
     const friendships = await Friendship.find({
@@ -207,8 +212,9 @@ export const getFriends = async (req, res) => {
   }
 };
 
-// Lấy danh sách lời mời đã gửi
+// Lấy các lời mời đã gửi
 export const getSentRequests = async (req, res) => {
+  // Trả về các lời mời kết bạn user đã gửi nhưng chưa được chấp nhận
   try {
     const userId = req.user._id;
     const requests = await Friendship.find({
@@ -221,8 +227,9 @@ export const getSentRequests = async (req, res) => {
   }
 };
 
-// Lấy danh sách lời mời nhận được
+// Lấy các lời mời nhận được
 export const getReceivedRequests = async (req, res) => {
+  // Trả về các lời mời kết bạn user nhận được nhưng chưa xử lý
   try {
     const userId = req.user._id;
     const requests = await Friendship.find({
@@ -235,8 +242,9 @@ export const getReceivedRequests = async (req, res) => {
   }
 };
 
-// Lấy số lượng bạn bè
+// Đếm số lượng bạn bè
 export const getFriendCount = async (req, res) => {
+  // Trả về số lượng bạn bè đã kết bạn của user chỉ định
   try {
     const userId = req.params.userId;
     const count = await Friendship.countDocuments({
@@ -251,8 +259,9 @@ export const getFriendCount = async (req, res) => {
   }
 };
 
-// Kiểm tra quyền nhắn tin
+// Kiểm tra quyền nhắn tin giữa hai user
 export const canMessage = async (req, res) => {
+  // Trả về true nếu hai user là bạn bè hoặc user nhận cho phép nhận tin nhắn từ người lạ
   try {
     const userId = req.user._id;
     const targetId = req.params.userId;
@@ -276,6 +285,7 @@ export const canMessage = async (req, res) => {
   }
 };
 
+// Hủy kết bạn
 export const unfriend = async (req, res) => {
   try {
     const userId = req.user._id;

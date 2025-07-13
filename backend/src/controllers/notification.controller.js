@@ -3,17 +3,15 @@ import User from "../models/user.model.js";
 import Friendship from "../models/friendship.model.js";
 import { sendNotificationToUser, sendFriendshipUpdate } from "../lib/socket.js";
 
-// Get all notifications for a user
+// Lấy tất cả thông báo của người dùng
 export const getNotifications = async (req, res) => {
   try {
     const userId = req.user.id;
-
     const notifications = await Notification.find({ recipient: userId })
       .populate("sender", "fullName profilePic")
       .populate("friendship")
       .sort({ createdAt: -1 })
       .limit(50);
-
     res.status(200).json(notifications);
   } catch (error) {
     console.error("Error getting notifications:", error);
@@ -21,22 +19,19 @@ export const getNotifications = async (req, res) => {
   }
 };
 
-// Mark notification as read
+// Đánh dấu một thông báo đã đọc
 export const markAsRead = async (req, res) => {
   try {
     const { notificationId } = req.params;
     const userId = req.user.id;
-
     const notification = await Notification.findOneAndUpdate(
       { _id: notificationId, recipient: userId },
       { isRead: true },
       { new: true }
     );
-
     if (!notification) {
       return res.status(404).json({ error: "Notification not found" });
     }
-
     res.status(200).json(notification);
   } catch (error) {
     console.error("Error marking notification as read:", error);
@@ -44,23 +39,20 @@ export const markAsRead = async (req, res) => {
   }
 };
 
-// Mark all notifications as read
+// Đánh dấu tất cả thông báo đã đọc
 export const markAllAsRead = async (req, res) => {
   try {
     const userId = req.user.id;
-
     await Notification.updateMany(
       { recipient: userId, isRead: false },
       { isRead: true }
     );
-
-    // Emit real-time update
+    // Gửi realtime update
     sendNotificationToUser(userId, {
       type: "all_read",
       message: "All notifications marked as read",
       timestamp: new Date(),
     });
-
     res.status(200).json({ message: "All notifications marked as read" });
   } catch (error) {
     console.error("Error marking all notifications as read:", error);
@@ -68,16 +60,14 @@ export const markAllAsRead = async (req, res) => {
   }
 };
 
-// Get unread count
+// Lấy số lượng thông báo chưa đọc
 export const getUnreadCount = async (req, res) => {
   try {
     const userId = req.user.id;
-
     const count = await Notification.countDocuments({
       recipient: userId,
       isRead: false,
     });
-
     res.status(200).json({ count });
   } catch (error) {
     console.error("Error getting unread count:", error);
@@ -85,21 +75,18 @@ export const getUnreadCount = async (req, res) => {
   }
 };
 
-// Delete notification
+// Xóa một thông báo
 export const deleteNotification = async (req, res) => {
   try {
     const { notificationId } = req.params;
     const userId = req.user.id;
-
     const notification = await Notification.findOneAndDelete({
       _id: notificationId,
       recipient: userId,
     });
-
     if (!notification) {
       return res.status(404).json({ error: "Notification not found" });
     }
-
     res.status(200).json({ message: "Notification deleted successfully" });
   } catch (error) {
     console.error("Error deleting notification:", error);
@@ -107,7 +94,7 @@ export const deleteNotification = async (req, res) => {
   }
 };
 
-// Create notification (helper function to use in friendship controller)
+// Tạo thông báo (dùng nội bộ)
 export const createNotification = async (
   recipientId,
   senderId,
@@ -123,15 +110,12 @@ export const createNotification = async (
       friendship: friendshipId,
       message,
     });
-
     await notification.save();
-
-    // Populate sender info for real-time notification
+    // Lấy thông tin sender để gửi realtime
     const populatedNotification = await Notification.findById(notification._id)
       .populate("sender", "fullName profilePic")
       .populate("friendship");
-
-    // Send real-time notification
+    // Gửi thông báo realtime
     sendNotificationToUser(recipientId, {
       _id: notification._id,
       type,
@@ -142,7 +126,6 @@ export const createNotification = async (
       createdAt: notification.createdAt,
       timestamp: new Date(),
     });
-
     return populatedNotification;
   } catch (error) {
     console.error("Error creating notification:", error);
@@ -150,7 +133,7 @@ export const createNotification = async (
   }
 };
 
-// Helper function to create friendship notification
+// Tạo thông báo liên quan kết bạn
 export const createFriendshipNotification = async (
   recipientId,
   senderId,
@@ -161,7 +144,6 @@ export const createFriendshipNotification = async (
   try {
     const sender = await User.findById(senderId);
     const recipient = await User.findById(recipientId);
-
     let message = customMessage;
     if (!message) {
       switch (type) {
@@ -175,7 +157,6 @@ export const createFriendshipNotification = async (
           message = "You have a new notification";
       }
     }
-
     return await createNotification(
       recipientId,
       senderId,
