@@ -32,10 +32,10 @@ export const sendFriendRequest = async (req, res) => {
 
       // Nếu có lời mời pending từ người khác
       if (existing.status === "pending") {
-      return res.status(400).json({
-        message: "Friend request already exists or you are already friends.",
-      });
-    }
+        return res.status(400).json({
+          message: "Friend request already exists or you are already friends.",
+        });
+      }
 
       // Nếu có lời mời đã từ chối, cập nhật thành pending
       if (existing.status === "declined") {
@@ -146,14 +146,6 @@ export const declineFriendRequest = async (req, res) => {
     if (!friendship) {
       return res.status(404).json({ message: "Friend request not found." });
     }
-
-    // Tạo thông báo cho người gửi lời mời
-    await createFriendshipNotification(
-      requesterId,
-      recipientId,
-      "friend_declined",
-      friendship._id
-    );
 
     // Emit real-time updates
     sendFriendshipUpdate([requesterId, recipientId], {

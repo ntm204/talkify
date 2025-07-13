@@ -3,7 +3,7 @@ import User from "../models/user.model.js";
 import Friendship from "../models/friendship.model.js";
 import { sendNotificationToUser, sendFriendshipUpdate } from "../lib/socket.js";
 
-// Lấy tất cả thông báo của user
+// Get all notifications for a user
 export const getNotifications = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -21,7 +21,7 @@ export const getNotifications = async (req, res) => {
   }
 };
 
-// Đánh dấu thông báo đã đọc
+// Mark notification as read
 export const markAsRead = async (req, res) => {
   try {
     const { notificationId } = req.params;
@@ -44,7 +44,7 @@ export const markAsRead = async (req, res) => {
   }
 };
 
-// Đánh dấu tất cả thông báo đã đọc
+// Mark all notifications as read
 export const markAllAsRead = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -68,7 +68,7 @@ export const markAllAsRead = async (req, res) => {
   }
 };
 
-// Đếm số thông báo chưa đọc
+// Get unread count
 export const getUnreadCount = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -85,7 +85,7 @@ export const getUnreadCount = async (req, res) => {
   }
 };
 
-// Xóa thông báo
+// Delete notification
 export const deleteNotification = async (req, res) => {
   try {
     const { notificationId } = req.params;
@@ -107,7 +107,7 @@ export const deleteNotification = async (req, res) => {
   }
 };
 
-// Tạo thông báo (helper function để sử dụng trong friendship controller)
+// Create notification (helper function to use in friendship controller)
 export const createNotification = async (
   recipientId,
   senderId,
@@ -150,7 +150,7 @@ export const createNotification = async (
   }
 };
 
-// Helper function để tạo thông báo friendship
+// Helper function to create friendship notification
 export const createFriendshipNotification = async (
   recipientId,
   senderId,
@@ -166,16 +166,13 @@ export const createFriendshipNotification = async (
     if (!message) {
       switch (type) {
         case "friend_request":
-          message = `${sender.fullName} đã gửi lời mời kết bạn cho bạn`;
+          message = `${sender.fullName} sent you a friend request`;
           break;
         case "friend_accepted":
-          message = `${recipient.fullName} đã chấp nhận lời mời kết bạn của bạn`;
-          break;
-        case "friend_declined":
-          message = `${recipient.fullName} đã từ chối lời mời kết bạn của bạn`;
+          message = `${sender.fullName} accepted your friend request`;
           break;
         default:
-          message = "Bạn có một thông báo mới";
+          message = "You have a new notification";
       }
     }
 
