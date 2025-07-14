@@ -409,7 +409,7 @@ const FriendsPage = () => {
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-base-content/40 w-5 h-5" />
                 <input
                   type="text"
-                  placeholder="Search users..."
+                  placeholder="Search by name or email..."
                   value={searchAllQuery}
                   onChange={(e) => setSearchAllQuery(e.target.value)}
                   className="w-full pl-10 pr-4 py-3 bg-base-100 border border-base-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200"

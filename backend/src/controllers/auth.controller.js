@@ -158,7 +158,7 @@ export const checkAuth = (req, res) => {
   }
 };
 
-// Tìm kiếm user theo tên
+// Tìm kiếm user theo tên hoặc email
 export const searchUsers = async (req, res) => {
   try {
     const { query, excludeFriends } = req.query;
@@ -170,7 +170,10 @@ export const searchUsers = async (req, res) => {
     const regex = new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
     let filter = {
       _id: { $ne: userId },
-      fullName: regex,
+      $or: [
+        { fullName: regex },
+        { email: regex }
+      ],
     };
     // Nếu cần loại trừ bạn bè đã kết bạn
     if (excludeFriends === "true") {
