@@ -57,12 +57,12 @@ export const login = async (req, res) => {
     const user = await User.findOne({ email });
 
     if (!user) {
-      return res.status(400).json({ message: "Invalid credentials" });
+      return res.status(400).json({ message: "Email not found" });
     }
 
     const isPasswordCorrect = await bcrypt.compare(password, user.password);
     if (!isPasswordCorrect) {
-      return res.status(400).json({ message: "Invalid credentials" });
+      return res.status(400).json({ message: "Incorrect password" });
     }
 
     generateToken(user._id, res);
@@ -170,10 +170,7 @@ export const searchUsers = async (req, res) => {
     const regex = new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
     let filter = {
       _id: { $ne: userId },
-      $or: [
-        { fullName: regex },
-        { email: regex }
-      ],
+      $or: [{ fullName: regex }, { email: regex }],
     };
     // Nếu cần loại trừ bạn bè đã kết bạn
     if (excludeFriends === "true") {
