@@ -54,36 +54,12 @@ const ChatContainer = () => {
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.map((message) =>
           message.system ? (
-            <div key={message._id} className="w-full flex justify-center my-4">
-              <div className="bg-base-200/80 backdrop-blur-sm border border-base-300 rounded-2xl px-4 sm:px-6 py-4 max-w-sm sm:max-w-md mx-2 sm:mx-4 shadow-lg">
-                <div className="flex items-start gap-3 mb-3">
-                  <div className="bg-warning/20 p-2 rounded-full flex-shrink-0">
-                    <AlertCircle size={16} className="text-warning" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h4 className="font-semibold text-base-content text-sm sm:text-base mb-1">
-                      Message Blocked
-                    </h4>
-                    <p className="text-base-content/70 text-xs sm:text-sm leading-relaxed">
-                      This user doesn't accept messages from strangers. Send a
-                      friend request to start chatting.
-                    </p>
-                  </div>
-                </div>
-                <div className="flex flex-col sm:flex-row gap-2 mt-4">
-                  <button className="btn btn-primary btn-sm gap-2 flex-1 hover:scale-105 transition-transform duration-200">
-                    <UserPlus size={14} />
-                    <span className="hidden sm:inline">
-                      Send Friend Request
-                    </span>
-                    <span className="sm:hidden">Add Friend</span>
-                  </button>
-                  <button className="btn btn-outline btn-sm gap-2 flex-1 hover:scale-105 transition-transform duration-200">
-                    <Shield size={14} />
-                    <span className="hidden sm:inline">Learn More</span>
-                    <span className="sm:hidden">Info</span>
-                  </button>
-                </div>
+            <div key={message._id} className="w-full flex my-2">
+              <div
+                className="bg-base-200 text-base-content/60 text-sm px-4 py-2 rounded-2xl max-w-xs border border-base-300"
+                style={{ opacity: 0.85, fontStyle: "italic" }}
+              >
+                {message.text}
               </div>
             </div>
           ) : (

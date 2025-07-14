@@ -97,17 +97,16 @@ export const sendMessage = async (req, res) => {
     }
 
     if (!canSend) {
-      // Trả về message system cho người gửi, không lưu DB, không gửi cho người nhận
-      const systemMessage = {
-        _id: "system-" + Date.now(),
-        senderId: receiverId, // hệ thống đại diện cho người nhận
-        receiverId: senderId,
+      // Lưu message system vào DB, chỉ cho người gửi thấy
+      const systemMessage = new Message({
+        senderId: senderId, // người gửi
+        receiverId: receiverId, // người nhận
         text: "This user doesn't accept messages from strangers. Send a friend request to start chatting.",
         image: null,
         sticker: null,
-        createdAt: new Date(),
         system: true,
-      };
+      });
+      await systemMessage.save();
       const senderSocketId = getReceiverSocketId(senderId);
       if (senderSocketId)
         io.to(senderSocketId).emit("newMessage", systemMessage);

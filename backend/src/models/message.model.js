@@ -21,6 +21,10 @@ const messageSchema = new mongoose.Schema(
     sticker: {
       type: String,
     },
+    system: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );
