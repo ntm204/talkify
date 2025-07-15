@@ -25,11 +25,12 @@ const UserCard = ({
   loading,
   onShowInfo,
   onSelect,
+  selected,
 }) => (
   <div
-    className={`user-card-clickable flex lg:flex-row flex-col items-center gap-2 lg:gap-3 p-2 lg:p-3 mx-1 lg:mx-2 rounded-xl hover:bg-base-200/60 transition-all duration-200 group ${
-      isFriend ? "" : ""
-    }`}
+    className={`user-card-clickable flex lg:flex-row flex-col items-center gap-2 lg:gap-3 p-2 lg:p-3 mx-1 lg:mx-2 rounded-xl transition-all duration-200 group
+      ${selected ? "bg-base-300 shadow-md" : "hover:bg-base-200/60"}
+    `}
     style={{ minHeight: "56px", cursor: "pointer" }}
     onClick={() => onSelect && onSelect(user)}
   >
@@ -183,18 +184,17 @@ const Sidebar = () => {
       : friend;
   });
 
-  // Lọc bạn bè theo search và trạng thái online
-  let filteredFriends = friendsWithLastMessage.filter((user) =>
+  // Lọc users theo search và trạng thái online
+  let filteredUsers = users.filter((user) =>
     user.fullName.toLowerCase().includes(searchQuery.toLowerCase())
   );
   if (showOnlineOnly) {
-    filteredFriends = filteredFriends.filter((user) =>
-      onlineFriendIds.includes(user._id)
+    filteredUsers = filteredUsers.filter((user) =>
+      onlineUsers.includes(user._id)
     );
   }
-
-  // Sắp xếp bạn bè: ưu tiên có lastMessage mới nhất, sau đó theo tên
-  filteredFriends = filteredFriends.sort((a, b) => {
+  // Sắp xếp: user có lastMessage mới nhất lên đầu, nếu không có thì theo tên
+  filteredUsers = filteredUsers.sort((a, b) => {
     const aTime = a.lastMessage
       ? new Date(a.lastMessage.createdAt).getTime()
       : 0;
@@ -234,25 +234,33 @@ const Sidebar = () => {
             <span className="text-sm font-medium">Show online only</span>
           </label>
           <span className="text-xs text-zinc-500">
-            ({onlineFriendsCount} online)
+            ({filteredUsers.filter((u) => onlineUsers.includes(u._id)).length}{" "}
+            online)
           </span>
         </div>
       </div>
-      <div className="overflow-y-auto w-full py-3">
-        {filteredFriends.length === 0 && (
-          <div className="text-center text-base-content/60 py-4 text-sm">
-            No friends yet
+      <div className="flex-1 overflow-y-auto py-2">
+        {isUsersLoading ? (
+          <SidebarSkeleton />
+        ) : filteredUsers.length === 0 ? (
+          <div className="text-center text-base-content/60 py-16">
+            No chats found.
           </div>
+        ) : (
+          filteredUsers.map((user) => (
+            <UserCard
+              key={user._id}
+              user={user}
+              isFriend={user.isFriend}
+              status={undefined}
+              onAddFriend={undefined}
+              loading={false}
+              onShowInfo={setUserInfoModalUser}
+              onSelect={setSelectedUser}
+              selected={selectedUser && selectedUser._id === user._id}
+            />
+          ))
         )}
-        {filteredFriends.map((user) => (
-          <UserCard
-            key={user._id}
-            user={{ ...user, isOnline: onlineUsers.includes(user._id) }}
-            isFriend={true}
-            onShowInfo={setUserInfoModalUser}
-            onSelect={setSelectedUser}
-          />
-        ))}
       </div>
       {userInfoModalUser && (
         <UserInfoModal

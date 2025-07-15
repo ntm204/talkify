@@ -177,6 +177,12 @@ const FriendsPage = () => {
     navigate("/");
   };
 
+  // Nhắn tin với user lạ
+  const handleMessageStranger = (user) => {
+    setSelectedUser(user);
+    navigate("/");
+  };
+
   // Chuyển sang trang tìm bạn
   const handleFindFriends = () => {
     navigate("/");
@@ -187,11 +193,15 @@ const FriendsPage = () => {
     const isOnline = onlineUsers.includes(user._id);
     let isSent = false;
     let isFriend = false;
+    let isReceived = false;
     if (type === "search") {
       isSent =
         sentRequests.some((req) => req.recipient._id === user._id) ||
         user._justSent;
       isFriend = friends.some((f) => f._id === user._id) || user._isFriend;
+      isReceived = receivedRequests.some(
+        (req) => req.requester._id === user._id
+      );
     }
 
     return (
@@ -269,24 +279,26 @@ const FriendsPage = () => {
               </button>
             </>
           )}
-          {type === "search" && !isSent && !isFriend && (
-            <button
-              onClick={() => handleSendFriendRequest(user._id)}
-              className="btn btn-circle btn-sm bg-primary hover:bg-primary/10 text-primary-content"
-              title="Add Friend"
-              disabled={isPending(user._id)}
-            >
-              <UserPlus size={18} />
-            </button>
-          )}
-          {type === "search" && isSent && (
-            <button
-              className="btn btn-circle btn-sm bg-warning/10 text-warning cursor-default"
-              title="Sent"
-              disabled
-            >
-              <UserPlus size={18} />
-            </button>
+          {type === "search" && !isFriend && (
+            <>
+              <button
+                className="btn btn-circle btn-sm bg-transparent text-success hover:bg-success/10"
+                title="Message"
+                onClick={() => handleMessageStranger(user)}
+              >
+                <MessageCircle size={18} />
+              </button>
+              <button
+                onClick={() => handleSendFriendRequest(user._id)}
+                className={`btn btn-circle btn-sm bg-primary hover:bg-primary/10 text-primary-content ${
+                  isSent || isReceived ? "cursor-default" : ""
+                }`}
+                title={isReceived ? "Đã nhận lời mời" : "Add Friend"}
+                disabled={isSent || isPending(user._id) || isReceived}
+              >
+                <UserPlus size={18} />
+              </button>
+            </>
           )}
           {type === "search" && isFriend && (
             <button

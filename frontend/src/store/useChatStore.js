@@ -111,7 +111,7 @@ export const useChatStore = create((set, get) => ({
     socket.off("typing");
     socket.off("stopTyping");
 
-    socket.on("newMessage", (newMessage) => {
+    socket.on("newMessage", async (newMessage) => {
       const { selectedUser, messages, users } = get();
       const loggedInUserId = useAuthStore.getState().authUser?._id;
 
@@ -119,6 +119,54 @@ export const useChatStore = create((set, get) => ({
         newMessage.senderId === loggedInUserId
           ? newMessage.receiverId
           : newMessage.senderId;
+
+      // Nếu user lạ chưa có trong danh sách users, chỉ fetch user đó và thêm vào đầu danh sách
+      if (!users.some((u) => u._id === relatedUserId)) {
+        try {
+          const res = await axiosInstance.get(`/auth/users/${relatedUserId}`);
+          const foundUser = res.data;
+          if (foundUser) {
+            const userToAdd = {
+              ...foundUser,
+              lastMessage: {
+                text: newMessage.text,
+                image: newMessage.image,
+                sticker: newMessage.sticker,
+                createdAt: newMessage.createdAt,
+                isSentByLoggedInUser: newMessage.senderId === loggedInUserId,
+              },
+            };
+            set((state) => ({ users: [userToAdd, ...state.users] }));
+          }
+        } catch (err) {
+          // Nếu fetch user lỗi, fallback: fetch lại toàn bộ users như cũ
+          get().getUsers();
+        }
+      } else {
+        // Nếu user đã có, update lastMessage như cũ
+        let updatedUsers = users.map((user) => {
+          if (user._id === relatedUserId) {
+            return {
+              ...user,
+              lastMessage: {
+                text: newMessage.text,
+                image: newMessage.image,
+                sticker: newMessage.sticker,
+                createdAt: newMessage.createdAt,
+                isSentByLoggedInUser: newMessage.senderId === loggedInUserId,
+              },
+            };
+          }
+          return user;
+        });
+        // Đẩy user có tin nhắn mới lên đầu
+        const idx = updatedUsers.findIndex((u) => u._id === relatedUserId);
+        if (idx > -1) {
+          const [userToTop] = updatedUsers.splice(idx, 1);
+          updatedUsers = [userToTop, ...updatedUsers];
+        }
+        set((state) => ({ users: [...updatedUsers] }));
+      }
 
       if (
         selectedUser &&
@@ -135,37 +183,6 @@ export const useChatStore = create((set, get) => ({
           }));
         }
       }
-
-      // Tạo preview cho lastMessage
-      let previewText = "";
-      if (newMessage.text) previewText = newMessage.text;
-      else if (newMessage.image) previewText = "[Photo]";
-      else if (newMessage.sticker) previewText = "[Sticker]";
-      // Nếu có unsent, bạn có thể bổ sung logic ở đây
-
-      // Update users list: đẩy user có tin nhắn mới lên đầu
-      let updatedUsers = users.map((user) => {
-        if (user._id === relatedUserId) {
-          return {
-            ...user,
-            lastMessage: {
-              text: newMessage.text,
-              image: newMessage.image,
-              sticker: newMessage.sticker,
-              createdAt: newMessage.createdAt,
-              isSentByLoggedInUser: newMessage.senderId === loggedInUserId,
-            },
-          };
-        }
-        return user;
-      });
-      // Đẩy user có tin nhắn mới lên đầu
-      const idx = updatedUsers.findIndex((u) => u._id === relatedUserId);
-      if (idx > -1) {
-        const [userToTop] = updatedUsers.splice(idx, 1);
-        updatedUsers = [userToTop, ...updatedUsers];
-      }
-      set((state) => ({ users: [...updatedUsers] }));
     });
 
     // Handle typing event

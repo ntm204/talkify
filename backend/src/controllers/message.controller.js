@@ -8,21 +8,82 @@ import Friendship from "../models/friendship.model.js";
 export const getUsersForSidebar = async (req, res) => {
   try {
     const loggedInUserId = req.user._id;
-    const filteredUsers = await User.find({
-      _id: { $ne: loggedInUserId },
-    }).select("-password");
+    // Lấy danh sách bạn bè
+    const friendships = await Friendship.find({
+      $or: [
+        { requester: loggedInUserId, status: "accepted" },
+        { recipient: loggedInUserId, status: "accepted" },
+      ],
+    });
+    const friendIds = friendships.map((f) =>
+      String(f.requester) === String(loggedInUserId) ? f.recipient : f.requester
+    );
+    // Lấy tất cả bạn bè (dù có hoặc không có tin nhắn)
+    const friends = await User.find({ _id: { $in: friendIds } }).select(
+      "-password"
+    );
+    // Lấy tất cả user đã từng nhắn tin với mình (kể cả người lạ)
+    const messages = await Message.find({
+      $or: [{ senderId: loggedInUserId }, { receiverId: loggedInUserId }],
+    }).select("senderId receiverId");
+    // Lấy id các user đã từng nhắn tin với mình (trừ bản thân và bạn bè)
+    const strangerIds = Array.from(
+      new Set(
+        messages
+          .map((msg) =>
+            String(msg.senderId) === String(loggedInUserId)
+              ? String(msg.receiverId)
+              : String(msg.senderId)
+          )
+          .filter(
+            (id) =>
+              id !== String(loggedInUserId) &&
+              !friendIds.map((fid) => String(fid)).includes(id)
+          )
+      )
+    );
+    // Lấy thông tin user lạ đã từng nhắn tin
+    const strangers = await User.find({ _id: { $in: strangerIds } }).select(
+      "-password"
+    );
+    // Gộp bạn bè và người lạ đã từng nhắn tin
+    const allUsers = [
+      ...friends.map((user) => ({ ...user.toObject(), isFriend: true })),
+      ...strangers.map((user) => ({ ...user.toObject(), isFriend: false })),
+    ];
+    // Gắn lastMessage cho từng user
     const usersWithLastMessage = await Promise.all(
-      filteredUsers.map(async (user) => {
-        const lastMessage = await Message.findOne({
+      allUsers.map(async (user) => {
+        // Lấy message mới nhất giữa hai user
+        let lastMessage;
+        // Nếu là bạn bè hoặc user lạ, cần phân biệt phía sender/receiver
+        // Nếu loggedInUser là sender, lấy message mới nhất (kể cả system)
+        // Nếu loggedInUser là receiver, bỏ qua message system onlyForSender
+        // Lấy tất cả message giữa hai user, sort mới nhất trước
+        const messages = await Message.find({
           $or: [
             { senderId: loggedInUserId, receiverId: user._id },
             { senderId: user._id, receiverId: loggedInUserId },
           ],
         })
           .sort({ createdAt: -1 })
-          .select("text image sticker createdAt senderId");
+          .select("text image sticker createdAt senderId system onlyForSender");
+        if (messages.length === 0) {
+          lastMessage = null;
+        } else {
+          // Nếu loggedInUser là sender, lấy message mới nhất
+          // Nếu loggedInUser là receiver, bỏ qua message system onlyForSender
+          if (messages[0].senderId.toString() === loggedInUserId.toString()) {
+            lastMessage = messages[0];
+          } else {
+            // Tìm message đầu tiên không phải system onlyForSender
+            lastMessage = messages.find(
+              (msg) => !(msg.system && msg.onlyForSender)
+            );
+          }
+        }
         return {
-          ...user.toObject(),
+          ...user,
           lastMessage: lastMessage
             ? {
                 text: lastMessage.text,
@@ -48,12 +109,19 @@ export const getMessages = async (req, res) => {
   try {
     const { id: userToChatId } = req.params;
     const senderId = req.user._id;
-    const messages = await Message.find({
+    let messages = await Message.find({
       $or: [
         { senderId, receiverId: userToChatId },
         { senderId: userToChatId, receiverId: senderId },
       ],
     }).sort({ createdAt: 1 });
+    // Lọc message system chỉ hiển thị cho người gửi nếu onlyForSender
+    messages = messages.filter(
+      (msg) =>
+        !msg.system ||
+        !msg.onlyForSender ||
+        (msg.onlyForSender && String(msg.senderId) === String(senderId))
+    );
     res.json(messages);
   } catch (error) {
     console.log("Error in getMessages controller: ", error.message);
@@ -101,10 +169,11 @@ export const sendMessage = async (req, res) => {
       const systemMessage = new Message({
         senderId: senderId, // người gửi
         receiverId: receiverId, // người nhận
-        text: "This user doesn't accept messages from strangers. Send a friend request to start chatting.",
+        text: "This user doesn't accept messages from strangers.",
         image: null,
         sticker: null,
         system: true,
+        onlyForSender: true,
       });
       await systemMessage.save();
       const senderSocketId = getReceiverSocketId(senderId);
