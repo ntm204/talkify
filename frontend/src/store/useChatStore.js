@@ -376,4 +376,22 @@ export const useChatStore = create((set, get) => ({
       toast.error(error?.response?.data?.message || "Error unfriending");
     }
   },
+  // Reset toàn bộ state chat về mặc định
+  reset: () =>
+    set({
+      messages: [],
+      users: [],
+      selectedUser: null,
+      isUsersLoading: false,
+      isMessagesLoading: false,
+      typingUsers: [],
+      friends: [],
+      isFriendsLoading: false,
+      sentRequests: [],
+      receivedRequests: [],
+      isSentRequestsLoading: false,
+      isReceivedRequestsLoading: false,
+      globalSearchResults: [],
+      isGlobalSearchLoading: false,
+    }),
 }));

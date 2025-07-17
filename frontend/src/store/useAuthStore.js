@@ -138,6 +138,7 @@ export const useAuthStore = create((set, get) => ({
     try {
       await axiosInstance.post("/auth/logout");
       set({ authUser: null, notifications: [], unreadCount: 0 });
+      useChatStore.getState().reset(); // Reset toàn bộ state chat khi logout
       toast.success("Logged out successfully");
       get().disconnectSocket();
     } catch (error) {
