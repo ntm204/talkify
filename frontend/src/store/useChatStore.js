@@ -103,6 +103,84 @@ export const useChatStore = create((set, get) => ({
     }
   },
 
+  // Thu hồi tin nhắn
+  revokeMessage: async (messageId) => {
+    const { messages, users, selectedUser } = get();
+    try {
+      const res = await axiosInstance.delete(`/messages/${messageId}`);
+      const revokedMessage = res.data;
+
+      // Cập nhật messages
+      const updatedMessages = messages.map((msg) =>
+        msg._id === messageId ? revokedMessage : msg
+      );
+      set({ messages: updatedMessages });
+
+      // Chỉ cập nhật lastMessage nếu là last message thực sự
+      if (selectedUser && isLastMessage(messages, revokedMessage)) {
+        const updatedUsers = users.map((user) => {
+          if (user._id === selectedUser._id) {
+            return {
+              ...user,
+              lastMessage: {
+                text: "You have revoked a message",
+                image: null,
+                sticker: null,
+                createdAt: revokedMessage.createdAt,
+                revoked: true,
+                isSentByLoggedInUser: true,
+              },
+            };
+          }
+          return user;
+        });
+        set({ users: updatedUsers });
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.error || "Failed to revoke message.");
+    }
+  },
+
+  // Chỉnh sửa tin nhắn
+  editMessage: async (messageId, newText) => {
+    const { messages, users, selectedUser } = get();
+    try {
+      const res = await axiosInstance.put(`/messages/${messageId}`, {
+        text: newText,
+      });
+      const editedMessage = res.data;
+
+      // Cập nhật messages
+      const updatedMessages = messages.map((msg) =>
+        msg._id === messageId ? editedMessage : msg
+      );
+      set({ messages: updatedMessages });
+
+      // Chỉ cập nhật lastMessage nếu là last message thực sự
+      if (selectedUser && isLastMessage(messages, editedMessage)) {
+        const updatedUsers = users.map((user) => {
+          if (user._id === selectedUser._id) {
+            return {
+              ...user,
+              lastMessage: {
+                text: editedMessage.text,
+                image: editedMessage.image,
+                sticker: editedMessage.sticker,
+                createdAt: editedMessage.createdAt,
+                edited: true,
+                isSentByLoggedInUser: true,
+              },
+            };
+          }
+          return user;
+        });
+        set({ users: updatedUsers });
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.error || "Failed to edit message.");
+    }
+  },
+
   subscribeToMessages: () => {
     const socket = useAuthStore.getState().socket;
     if (!socket) return;
@@ -110,6 +188,8 @@ export const useChatStore = create((set, get) => ({
     socket.off("newMessage");
     socket.off("typing");
     socket.off("stopTyping");
+    socket.off("messageRevoked");
+    socket.off("messageEdited");
 
     socket.on("newMessage", async (newMessage) => {
       const { selectedUser, messages, users } = get();
@@ -185,6 +265,146 @@ export const useChatStore = create((set, get) => ({
       }
     });
 
+    // Handle message revoked event
+    socket.on("messageRevoked", async (revokedMessage) => {
+      const { users, selectedUser, messages } = get();
+      const loggedInUserId = useAuthStore.getState().authUser?._id;
+
+      const relatedUserId =
+        revokedMessage.senderId === loggedInUserId
+          ? revokedMessage.receiverId
+          : revokedMessage.senderId;
+
+      let updated = false;
+      const updatedUsers = users.map((user) => {
+        if (
+          user._id === relatedUserId &&
+          user.lastMessage &&
+          user.lastMessage._id === revokedMessage._id
+        ) {
+          updated = true;
+          const isSentByLoggedInUser =
+            revokedMessage.senderId === loggedInUserId;
+          return {
+            ...user,
+            lastMessage: {
+              ...user.lastMessage,
+              text: isSentByLoggedInUser
+                ? "You have revoked a message"
+                : "The other party has revoked a message",
+              image: null,
+              sticker: null,
+              revoked: true,
+              isSentByLoggedInUser,
+              createdAt: revokedMessage.createdAt,
+            },
+          };
+        }
+        return user;
+      });
+      set({ users: updatedUsers });
+
+      // Nếu không cập nhật được (do lastMessage._id không trùng), fetch lại users từ backend (không nháy loading)
+      if (!updated) {
+        try {
+          const res = await axiosInstance.get("/messages/users");
+          const sortedUsers = res.data.sort((a, b) => {
+            const aTime = a.lastMessage
+              ? new Date(a.lastMessage.createdAt).getTime()
+              : 0;
+            const bTime = b.lastMessage
+              ? new Date(b.lastMessage.createdAt).getTime()
+              : 0;
+            return bTime - aTime;
+          });
+          set({ users: sortedUsers });
+        } catch (error) {
+          // ignore
+        }
+      }
+
+      // Nếu đang mở đoạn chat này thì cập nhật messages
+      if (
+        selectedUser &&
+        (selectedUser._id === revokedMessage.senderId ||
+          selectedUser._id === revokedMessage.receiverId)
+      ) {
+        const updatedMessages = messages.map((msg) =>
+          msg._id === revokedMessage._id ? revokedMessage : msg
+        );
+        set({ messages: updatedMessages });
+      }
+    });
+
+    // Handle message edited event
+    socket.on("messageEdited", async (editedMessage) => {
+      const { users, selectedUser, messages } = get();
+      const loggedInUserId = useAuthStore.getState().authUser?._id;
+
+      const relatedUserId =
+        editedMessage.senderId === loggedInUserId
+          ? editedMessage.receiverId
+          : editedMessage.senderId;
+
+      let updated = false;
+      const updatedUsers = users.map((user) => {
+        if (
+          user._id === relatedUserId &&
+          user.lastMessage &&
+          user.lastMessage._id === editedMessage._id
+        ) {
+          updated = true;
+          const isSentByLoggedInUser =
+            editedMessage.senderId === loggedInUserId;
+          return {
+            ...user,
+            lastMessage: {
+              ...user.lastMessage,
+              text: editedMessage.text,
+              image: editedMessage.image,
+              sticker: editedMessage.sticker,
+              edited: true,
+              isSentByLoggedInUser,
+              createdAt: editedMessage.createdAt,
+            },
+          };
+        }
+        return user;
+      });
+      set({ users: updatedUsers });
+
+      // Nếu không cập nhật được (do lastMessage._id không trùng), fetch lại users từ backend (không nháy loading)
+      if (!updated) {
+        try {
+          const res = await axiosInstance.get("/messages/users");
+          const sortedUsers = res.data.sort((a, b) => {
+            const aTime = a.lastMessage
+              ? new Date(a.lastMessage.createdAt).getTime()
+              : 0;
+            const bTime = b.lastMessage
+              ? new Date(b.lastMessage.createdAt).getTime()
+              : 0;
+            return bTime - aTime;
+          });
+          set({ users: sortedUsers });
+        } catch (error) {
+          // ignore
+        }
+      }
+
+      // Nếu đang mở đoạn chat này thì cập nhật messages
+      if (
+        selectedUser &&
+        (selectedUser._id === editedMessage.senderId ||
+          selectedUser._id === editedMessage.receiverId)
+      ) {
+        const updatedMessages = messages.map((msg) =>
+          msg._id === editedMessage._id ? editedMessage : msg
+        );
+        set({ messages: updatedMessages });
+      }
+    });
+
     // Handle typing event
     socket.on("typing", (senderId) => {
       const { selectedUser } = get();
@@ -236,6 +456,8 @@ export const useChatStore = create((set, get) => ({
       socket.off("newMessage");
       socket.off("typing");
       socket.off("stopTyping");
+      socket.off("messageRevoked");
+      socket.off("messageEdited");
     }
 
     set({ typingUsers: [] });
@@ -395,3 +617,9 @@ export const useChatStore = create((set, get) => ({
       isGlobalSearchLoading: false,
     }),
 }));
+
+// Thêm hàm tiện ích kiểm tra last message
+const isLastMessage = (messages, message) => {
+  if (!messages.length) return false;
+  return messages[messages.length - 1]._id === message._id;
+};

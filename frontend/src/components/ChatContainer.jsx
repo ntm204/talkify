@@ -3,6 +3,8 @@ import { useEffect, useRef, useState } from "react";
 import ChatHeader from "./ChatHeader";
 import MessageInput from "./MessageInput";
 import MessageSkeleton from "./skeletons/MessageSkeleton";
+import MessageOptions from "./MessageOptions";
+import MessageEditForm from "./MessageEditForm";
 import { useAuthStore } from "../store/useAuthStore";
 import { formatMessageTime } from "../lib/utils";
 import { canMessage } from "../lib/axios";
@@ -20,6 +22,7 @@ const ChatContainer = () => {
   } = useChatStore();
   const { authUser } = useAuthStore();
   const messageEndRef = useRef(null);
+  const [editingMessageId, setEditingMessageId] = useState(null);
 
   const isSelectedUserTyping = typingUsers.includes(selectedUser?._id);
 
@@ -38,6 +41,14 @@ const ChatContainer = () => {
       messageEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [isSelectedUserTyping]);
+
+  const handleEditStart = (messageId) => {
+    setEditingMessageId(messageId);
+  };
+
+  const handleEditCancel = () => {
+    setEditingMessageId(null);
+  };
 
   if (isMessagesLoading)
     return (
@@ -70,7 +81,7 @@ const ChatContainer = () => {
                 message.senderId === authUser._id ? "chat-end" : "chat-start"
               }`}
             >
-              <div className=" chat-image avatar">
+              <div className="chat-image avatar">
                 <div className="size-10 rounded-full border">
                   <img
                     src={
@@ -83,29 +94,68 @@ const ChatContainer = () => {
                   />
                 </div>
               </div>
-              <div className="chat-header mb-1">
+              <div className="chat-header mb-1 flex items-center gap-2">
                 <time className="text-xs opacity-50 ml-1">
                   {formatMessageTime(message.createdAt)}
+                  {message.edited && !message.revoked && (
+                    <span className="ml-1 text-xs opacity-60">(Edited)</span>
+                  )}
                 </time>
               </div>
-              <div className="chat-bubble flex flex-col">
-                {message.image && (
-                  <img
-                    src={message.image}
-                    alt="Attachment"
-                    className="sm:max-w-[200px] rounded-md mb-2"
-                    loading="lazy"
-                  />
+              {/* Bọc bong bóng và nút trong flex row, group */}
+              <div
+                className={`flex items-center group relative w-fit ${
+                  message.senderId === authUser._id ? "ml-auto" : ""
+                }`}
+              >
+                {/* Kebab menu bên ngoài, bên trái bong bóng, chỉ hiện khi hover */}
+                {message.senderId === authUser._id && (
+                  <span className="mr-2 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                    <MessageOptions
+                      message={message}
+                      onEditStart={() => handleEditStart(message._id)}
+                    />
+                  </span>
                 )}
-                {message.sticker && (
-                  <img
-                    src={message.sticker}
-                    alt="Sticker"
-                    className="sm:max-w-[100px] rounded-md mb-2"
-                    loading="lazy"
-                  />
-                )}
-                {message.text && <p>{message.text}</p>}
+                {/* Bong bóng chat */}
+                <div
+                  className={`chat-bubble flex flex-col relative ${
+                    message.senderId === authUser._id
+                      ? "bg-blue-600 text-white"
+                      : ""
+                  }`}
+                >
+                  {editingMessageId === message._id ? (
+                    <MessageEditForm
+                      message={message}
+                      onCancel={handleEditCancel}
+                    />
+                  ) : message.revoked ? (
+                    <p className="italic text-gray-500 dark:text-gray-400">
+                      Message has been revoked
+                    </p>
+                  ) : (
+                    <>
+                      {message.image && (
+                        <img
+                          src={message.image}
+                          alt="Attachment"
+                          className="sm:max-w-[200px] rounded-md mb-2"
+                          loading="lazy"
+                        />
+                      )}
+                      {message.sticker && (
+                        <img
+                          src={message.sticker}
+                          alt="Sticker"
+                          className="sm:max-w-[100px] rounded-md mb-2"
+                          loading="lazy"
+                        />
+                      )}
+                      {message.text && <span>{message.text}</span>}
+                    </>
+                  )}
+                </div>
               </div>
             </div>
           )

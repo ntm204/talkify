@@ -56,10 +56,6 @@ export const getUsersForSidebar = async (req, res) => {
       allUsers.map(async (user) => {
         // Lấy message mới nhất giữa hai user
         let lastMessage;
-        // Nếu là bạn bè hoặc user lạ, cần phân biệt phía sender/receiver
-        // Nếu loggedInUser là sender, lấy message mới nhất (kể cả system)
-        // Nếu loggedInUser là receiver, bỏ qua message system onlyForSender
-        // Lấy tất cả message giữa hai user, sort mới nhất trước
         const messages = await Message.find({
           $or: [
             { senderId: loggedInUserId, receiverId: user._id },
@@ -67,12 +63,14 @@ export const getUsersForSidebar = async (req, res) => {
           ],
         })
           .sort({ createdAt: -1 })
-          .select("text image sticker createdAt senderId system onlyForSender");
+          .select(
+            "text image sticker createdAt senderId system onlyForSender revoked edited"
+          );
         if (messages.length === 0) {
           lastMessage = null;
         } else {
-          // Nếu loggedInUser là sender, lấy message mới nhất
-          // Nếu loggedInUser là receiver, bỏ qua message system onlyForSender
+          // Nếu loggedInUser là sender, lấy message mới nhất (kể cả revoked)
+          // Nếu loggedInUser là receiver, bỏ qua message system onlyForSender, nhưng KHÔNG bỏ qua revoked
           if (messages[0].senderId.toString() === loggedInUserId.toString()) {
             lastMessage = messages[0];
           } else {
@@ -80,16 +78,32 @@ export const getUsersForSidebar = async (req, res) => {
             lastMessage = messages.find(
               (msg) => !(msg.system && msg.onlyForSender)
             );
+            // Nếu không tìm thấy, fallback về message mới nhất (có thể là revoked)
+            if (!lastMessage) lastMessage = messages[0];
           }
         }
+
+        // Xử lý lastMessage cho tin nhắn bị thu hồi
+        let lastMessageText = lastMessage?.text || "";
+        if (lastMessage?.revoked) {
+          if (lastMessage.senderId.toString() === loggedInUserId.toString()) {
+            lastMessageText = "You have revoked a message";
+          } else {
+            lastMessageText = "The other party has revoked a message";
+          }
+        }
+
         return {
           ...user,
           lastMessage: lastMessage
             ? {
-                text: lastMessage.text,
-                image: lastMessage.image,
-                sticker: lastMessage.sticker,
+                _id: lastMessage._id,
+                text: lastMessageText,
+                image: lastMessage.revoked ? null : lastMessage.image,
+                sticker: lastMessage.revoked ? null : lastMessage.sticker,
                 createdAt: lastMessage.createdAt,
+                revoked: lastMessage.revoked,
+                edited: lastMessage.revoked ? false : lastMessage.edited,
                 isSentByLoggedInUser:
                   lastMessage.senderId.toString() === loggedInUserId.toString(),
               }
@@ -206,6 +220,141 @@ export const sendMessage = async (req, res) => {
     res.status(201).json(newMessage);
   } catch (error) {
     console.log("Error in sendMessage controller: ", error.message);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+// Thu hồi tin nhắn
+export const revokeMessage = async (req, res) => {
+  try {
+    const { messageId } = req.params;
+    const userId = req.user._id;
+
+    // Tìm tin nhắn
+    const message = await Message.findById(messageId);
+    if (!message) {
+      return res.status(404).json({ error: "Tin nhắn không tồn tại" });
+    }
+
+    // Kiểm tra quyền: chỉ người gửi mới được thu hồi
+    if (message.senderId.toString() !== userId.toString()) {
+      return res
+        .status(403)
+        .json({ error: "You do not have permission to revoke this message." });
+    }
+
+    // Kiểm tra thời gian: chỉ thu hồi trong 2 phút
+    const messageTime = new Date(message.createdAt);
+    const currentTime = new Date();
+    const timeDiff = (currentTime - messageTime) / 1000 / 60; // phút
+
+    if (timeDiff > 2) {
+      return res
+        .status(400)
+        .json({
+          error:
+            "You can only revoke a message within 2 minutes after sending.",
+        });
+    }
+
+    // Kiểm tra trạng thái: không thu hồi tin nhắn đã thu hồi
+    if (message.revoked) {
+      return res
+        .status(400)
+        .json({ error: "This message has already been revoked." });
+    }
+
+    // Thu hồi tin nhắn
+    message.revoked = true;
+    message.revokedBy = userId;
+    message.text = "";
+    message.image = null;
+    message.sticker = null;
+    await message.save();
+
+    // Gửi socket event
+    const receiverSocketId = getReceiverSocketId(message.receiverId);
+    const senderSocketId = getReceiverSocketId(message.senderId);
+
+    if (receiverSocketId) {
+      io.to(receiverSocketId).emit("messageRevoked", message);
+    }
+    if (senderSocketId) {
+      io.to(senderSocketId).emit("messageRevoked", message);
+    }
+
+    res.status(200).json(message);
+  } catch (error) {
+    console.log("Error in revokeMessage controller: ", error.message);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+// Chỉnh sửa tin nhắn
+export const editMessage = async (req, res) => {
+  try {
+    const { messageId } = req.params;
+    const { text } = req.body;
+    const userId = req.user._id;
+
+    if (!text || text.trim() === "") {
+      return res
+        .status(400)
+        .json({ error: "Message content cannot be empty." });
+    }
+
+    // Tìm tin nhắn
+    const message = await Message.findById(messageId);
+    if (!message) {
+      return res.status(404).json({ error: "Tin nhắn không tồn tại" });
+    }
+
+    // Kiểm tra quyền: chỉ người gửi mới được chỉnh sửa
+    if (message.senderId.toString() !== userId.toString()) {
+      return res
+        .status(403)
+        .json({ error: "You do not have permission to edit this message." });
+    }
+
+    // Kiểm tra thời gian: chỉ chỉnh sửa trong 2 phút
+    const messageTime = new Date(message.createdAt);
+    const currentTime = new Date();
+    const timeDiff = (currentTime - messageTime) / 1000 / 60; // phút
+
+    if (timeDiff > 2) {
+      return res
+        .status(400)
+        .json({
+          error: "You can only edit a message within 2 minutes after sending.",
+        });
+    }
+
+    // Kiểm tra trạng thái: không chỉnh sửa tin nhắn đã thu hồi
+    if (message.revoked) {
+      return res
+        .status(400)
+        .json({ error: "You cannot edit a revoked message." });
+    }
+
+    // Chỉnh sửa tin nhắn
+    message.text = text.trim();
+    message.edited = true;
+    await message.save();
+
+    // Gửi socket event
+    const receiverSocketId = getReceiverSocketId(message.receiverId);
+    const senderSocketId = getReceiverSocketId(message.senderId);
+
+    if (receiverSocketId) {
+      io.to(receiverSocketId).emit("messageEdited", message);
+    }
+    if (senderSocketId) {
+      io.to(senderSocketId).emit("messageEdited", message);
+    }
+
+    res.status(200).json(message);
+  } catch (error) {
+    console.log("Error in editMessage controller: ", error.message);
     res.status(500).json({ error: "Internal server error" });
   }
 };

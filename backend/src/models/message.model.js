@@ -29,6 +29,18 @@ const messageSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    revoked: {
+      type: Boolean,
+      default: false,
+    },
+    revokedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+    edited: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );

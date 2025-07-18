@@ -72,19 +72,28 @@ const UserCard = ({
             {(() => {
               const isYou = user.lastMessage.isSentByLoggedInUser;
               let content = "";
-              if (user.lastMessage.text) content = user.lastMessage.text;
-              else if (user.lastMessage.image)
+
+              // Xử lý tin nhắn bị thu hồi
+              if (user.lastMessage.revoked) {
+                content = user.lastMessage.text; // Đã được xử lý từ backend
+              } else if (user.lastMessage.text) {
+                content = user.lastMessage.text;
+              } else if (user.lastMessage.image) {
                 content = isYou
                   ? "You sent a photo"
                   : `${user.fullName} sent a photo`;
-              else if (user.lastMessage.sticker)
+              } else if (user.lastMessage.sticker) {
                 content = isYou
                   ? "You sent a sticker"
                   : `${user.fullName} sent a sticker`;
-              else content = "";
+              } else {
+                content = "";
+              }
+
               const MAX_PREVIEW = 22;
               let displayText = "";
-              if (isYou && user.lastMessage.text) {
+
+              if (isYou && user.lastMessage.text && !user.lastMessage.revoked) {
                 const prefix = "You: ";
                 const remain = MAX_PREVIEW - prefix.length;
                 displayText =
@@ -98,6 +107,7 @@ const UserCard = ({
                     ? content.slice(0, MAX_PREVIEW).trim() + "..."
                     : content;
               }
+
               return (
                 <>
                   {/* Nội dung tin nhắn cuối, rút gọn nếu dài */}
@@ -107,6 +117,9 @@ const UserCard = ({
                   {/* Thời gian gửi tin nhắn cuối */}
                   <span className="ml-1 whitespace-nowrap opacity-60 align-middle">
                     • {getRelativeTime(user.lastMessage.createdAt)}
+                    {user.lastMessage.edited && !user.lastMessage.revoked && (
+                      <span className="ml-1">(Edited)</span>
+                    )}
                   </span>
                 </>
               );
