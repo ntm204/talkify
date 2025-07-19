@@ -152,7 +152,11 @@ const ChatContainer = () => {
                           loading="lazy"
                         />
                       )}
-                      {message.text && <span>{message.text}</span>}
+                      {message.text && (
+                        <span style={{ whiteSpace: "pre-line" }}>
+                          {message.text}
+                        </span>
+                      )}
                     </>
                   )}
                 </div>

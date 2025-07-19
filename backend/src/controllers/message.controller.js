@@ -249,12 +249,9 @@ export const revokeMessage = async (req, res) => {
     const timeDiff = (currentTime - messageTime) / 1000 / 60; // phút
 
     if (timeDiff > 2) {
-      return res
-        .status(400)
-        .json({
-          error:
-            "You can only revoke a message within 2 minutes after sending.",
-        });
+      return res.status(400).json({
+        error: "You can only revoke a message within 2 minutes after sending.",
+      });
     }
 
     // Kiểm tra trạng thái: không thu hồi tin nhắn đã thu hồi
@@ -297,7 +294,7 @@ export const editMessage = async (req, res) => {
     const { text } = req.body;
     const userId = req.user._id;
 
-    if (!text || text.trim() === "") {
+    if (!text || text === "") {
       return res
         .status(400)
         .json({ error: "Message content cannot be empty." });
@@ -322,11 +319,9 @@ export const editMessage = async (req, res) => {
     const timeDiff = (currentTime - messageTime) / 1000 / 60; // phút
 
     if (timeDiff > 2) {
-      return res
-        .status(400)
-        .json({
-          error: "You can only edit a message within 2 minutes after sending.",
-        });
+      return res.status(400).json({
+        error: "You can only edit a message within 2 minutes after sending.",
+      });
     }
 
     // Kiểm tra trạng thái: không chỉnh sửa tin nhắn đã thu hồi
@@ -337,7 +332,7 @@ export const editMessage = async (req, res) => {
     }
 
     // Chỉnh sửa tin nhắn
-    message.text = text.trim();
+    message.text = text;
     message.edited = true;
     await message.save();
 
