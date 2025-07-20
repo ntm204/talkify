@@ -6,7 +6,7 @@ import Picker from "@emoji-mart/react";
 import data from "@emoji-mart/data";
 import stickers from "../constants/stickersData";
 
-const MessageInput = () => {
+const MessageInput = ({ replyingMessage, setReplyingMessage }) => {
   const [text, setText] = useState("");
   const [imagePreview, setImagePreview] = useState(null);
   const [showStickerPicker, setShowStickerPicker] = useState(false);
@@ -84,10 +84,15 @@ const MessageInput = () => {
         setIsTyping(false);
         clearTimeout(typingTimeoutRef.current);
       }
-      await sendMessage({ text: text.trim(), image: imagePreview });
+      await sendMessage({
+        text: text.trim(),
+        image: imagePreview,
+        replyTo: replyingMessage ? replyingMessage._id : undefined,
+      });
       setText("");
       setImagePreview(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
+      if (replyingMessage) setReplyingMessage(null);
     } catch (error) {
       console.error("Failed to send message:", error);
     }
@@ -128,6 +133,47 @@ const MessageInput = () => {
 
   return (
     <div className="p-4 w-full relative">
+      {/* Divider */}
+      <div className="w-full h-px bg-base-300 dark:bg-base-300 mb-2" />
+      {replyingMessage && (
+        <div
+          className="mb-2 flex items-center justify-between px-3 py-1 rounded-md"
+          style={{ minHeight: 32 }}
+        >
+          <div className="flex flex-col overflow-hidden">
+            <span className="font-bold text-sm text-primary truncate">
+              Replying to{" "}
+              {replyingMessage.senderId === selectedUser._id
+                ? selectedUser.fullName || selectedUser.username
+                : "You"}
+            </span>
+            <span className="text-xs text-gray-500 italic truncate max-w-[220px]">
+              {replyingMessage.text}
+              {replyingMessage.image && (
+                <img
+                  src={replyingMessage.image}
+                  alt="img"
+                  className="w-5 h-5 rounded object-cover inline-block ml-1 align-text-bottom"
+                />
+              )}
+              {replyingMessage.sticker && (
+                <img
+                  src={replyingMessage.sticker}
+                  alt="sticker"
+                  className="w-5 h-5 inline-block ml-1 align-text-bottom"
+                />
+              )}
+            </span>
+          </div>
+          <button
+            type="button"
+            className="ml-2 text-gray-400 hover:text-red-500 p-1 rounded-full transition-colors"
+            onClick={() => setReplyingMessage(null)}
+          >
+            <X size={16} />
+          </button>
+        </div>
+      )}
       {imagePreview && (
         <div className="mb-3 flex items-center gap-2">
           <div className="relative">

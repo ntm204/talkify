@@ -137,7 +137,14 @@ export const useChatStore = create((set, get) => ({
         set({ users: updatedUsers });
       }
     } catch (error) {
-      toast.error(error.response?.data?.error || "Failed to revoke message.");
+      if (error.response?.status === 403) {
+        toast.error(
+          error.response?.data?.error ||
+            "You cannot revoke this message because the receiver does not allow messages from strangers and you are not friends."
+        );
+      } else {
+        toast.error(error.response?.data?.error || "Failed to revoke message.");
+      }
     }
   },
 
@@ -177,7 +184,14 @@ export const useChatStore = create((set, get) => ({
         set({ users: updatedUsers });
       }
     } catch (error) {
-      toast.error(error.response?.data?.error || "Failed to edit message.");
+      if (error.response?.status === 403) {
+        toast.error(
+          error.response?.data?.error ||
+            "You cannot edit this message because the receiver does not allow messages from strangers and you are not friends."
+        );
+      } else {
+        toast.error(error.response?.data?.error || "Failed to edit message.");
+      }
     }
   },
 

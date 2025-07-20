@@ -128,7 +128,12 @@ export const getMessages = async (req, res) => {
         { senderId, receiverId: userToChatId },
         { senderId: userToChatId, receiverId: senderId },
       ],
-    }).sort({ createdAt: 1 });
+    })
+      .sort({ createdAt: 1 })
+      .populate({
+        path: "replyTo",
+        select: "text image sticker senderId",
+      });
     // Lọc message system chỉ hiển thị cho người gửi nếu onlyForSender
     messages = messages.filter(
       (msg) =>
@@ -146,7 +151,7 @@ export const getMessages = async (req, res) => {
 // Gửi tin nhắn giữa hai user, kiểm tra quyền gửi
 export const sendMessage = async (req, res) => {
   try {
-    const { text, image, sticker } = req.body;
+    const { text, image, sticker, replyTo } = req.body;
     const { id: receiverId } = req.params;
     const senderId = req.user._id;
 
@@ -208,6 +213,7 @@ export const sendMessage = async (req, res) => {
       text,
       image: imageUrl,
       sticker,
+      replyTo: replyTo || null,
     });
     await newMessage.save();
 
@@ -242,6 +248,36 @@ export const revokeMessage = async (req, res) => {
         .status(403)
         .json({ error: "You do not have permission to revoke this message." });
     }
+
+    // --- BỔ SUNG: Nếu không còn là bạn bè và receiver không cho phép nhận tin nhắn từ người lạ thì không cho phép thu hồi ---
+    const Friendship = (await import("../models/friendship.model.js")).default;
+    const User = (await import("../models/user.model.js")).default;
+    const friendship = await Friendship.findOne({
+      $or: [
+        {
+          requester: userId,
+          recipient: message.receiverId,
+          status: "accepted",
+        },
+        {
+          requester: message.receiverId,
+          recipient: userId,
+          status: "accepted",
+        },
+      ],
+    });
+    if (!friendship) {
+      const receiverUser = await User.findById(message.receiverId);
+      if (!receiverUser.allowStrangerMessage) {
+        return res
+          .status(403)
+          .json({
+            error:
+              "You cannot revoke this message because the receiver does not allow messages from strangers and you are not friends.",
+          });
+      }
+    }
+    // --- END BỔ SUNG ---
 
     // Kiểm tra thời gian: chỉ thu hồi trong 2 phút
     const messageTime = new Date(message.createdAt);
@@ -312,6 +348,36 @@ export const editMessage = async (req, res) => {
         .status(403)
         .json({ error: "You do not have permission to edit this message." });
     }
+
+    // --- BỔ SUNG: Nếu không còn là bạn bè và receiver không cho phép nhận tin nhắn từ người lạ thì không cho phép chỉnh sửa ---
+    const Friendship = (await import("../models/friendship.model.js")).default;
+    const User = (await import("../models/user.model.js")).default;
+    const friendship = await Friendship.findOne({
+      $or: [
+        {
+          requester: userId,
+          recipient: message.receiverId,
+          status: "accepted",
+        },
+        {
+          requester: message.receiverId,
+          recipient: userId,
+          status: "accepted",
+        },
+      ],
+    });
+    if (!friendship) {
+      const receiverUser = await User.findById(message.receiverId);
+      if (!receiverUser.allowStrangerMessage) {
+        return res
+          .status(403)
+          .json({
+            error:
+              "You cannot edit this message because the receiver does not allow messages from strangers and you are not friends.",
+          });
+      }
+    }
+    // --- END BỔ SUNG ---
 
     // Kiểm tra thời gian: chỉ chỉnh sửa trong 2 phút
     const messageTime = new Date(message.createdAt);
