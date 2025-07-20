@@ -121,8 +121,8 @@ const ChatContainer = () => {
                 <div
                   className={`chat-bubble flex flex-col relative ${
                     message.senderId === authUser._id
-                      ? "bg-blue-600 text-white"
-                      : ""
+                      ? "bg-primary text-primary-content"
+                      : "bg-base-200 text-base-content"
                   }`}
                 >
                   {editingMessageId === message._id ? (
