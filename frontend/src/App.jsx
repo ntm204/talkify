@@ -62,7 +62,39 @@ const App = () => {
           />
         </Routes>
       </Suspense>
-      <Toaster />
+      <Toaster
+        toastOptions={{
+          style: {
+            maxWidth: 420,
+            padding: "16px 28px",
+            fontSize: "16px",
+            borderRadius: "12px",
+            textAlign: "center",
+            fontWeight: 500,
+            boxShadow: "0 4px 24px 0 rgba(0,0,0,0.10)",
+          },
+          success: {
+            style: {
+              background: "#e6f9f0",
+              color: "#1a6333",
+            },
+            iconTheme: {
+              primary: "#22c55e",
+              secondary: "#e6f9f0",
+            },
+          },
+          error: {
+            style: {
+              background: "#fff0f0",
+              color: "#b91c1c",
+            },
+            iconTheme: {
+              primary: "#ef4444",
+              secondary: "#fff0f0",
+            },
+          },
+        }}
+      />
     </div>
   );
 };
