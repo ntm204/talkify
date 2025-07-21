@@ -52,7 +52,7 @@ export const getUsersForSidebar = async (req, res) => {
       ...strangers.map((user) => ({ ...user.toObject(), isFriend: false })),
     ];
     // Gắn lastMessage cho từng user
-    const usersWithLastMessage = await Promise.all(
+    let usersWithLastMessage = await Promise.all(
       allUsers.map(async (user) => {
         // Lấy message mới nhất giữa hai user
         let lastMessage;
@@ -78,8 +78,8 @@ export const getUsersForSidebar = async (req, res) => {
             lastMessage = messages.find(
               (msg) => !(msg.system && msg.onlyForSender)
             );
-            // Nếu không tìm thấy, fallback về message mới nhất (có thể là revoked)
-            if (!lastMessage) lastMessage = messages[0];
+            // Nếu không tìm thấy, lastMessage = null (KHÔNG fallback về message system onlyForSender)
+            if (!lastMessage) lastMessage = null;
           }
         }
 
@@ -110,6 +110,10 @@ export const getUsersForSidebar = async (req, res) => {
             : null,
         };
       })
+    );
+    // Loại bỏ user lạ không có lastMessage (chỉ giữ bạn bè hoặc user lạ có lastMessage hợp lệ)
+    usersWithLastMessage = usersWithLastMessage.filter(
+      (user) => user.isFriend || user.lastMessage
     );
     res.status(200).json(usersWithLastMessage);
   } catch (error) {
@@ -217,6 +221,12 @@ export const sendMessage = async (req, res) => {
     });
     await newMessage.save();
 
+    // Populate replyTo trước khi emit socket và trả về response
+    await newMessage.populate({
+      path: "replyTo",
+      select: "text image sticker senderId",
+    });
+
     const receiverSocketId = getReceiverSocketId(receiverId);
     const senderSocketId = getReceiverSocketId(senderId);
     if (receiverSocketId)
@@ -269,12 +279,10 @@ export const revokeMessage = async (req, res) => {
     if (!friendship) {
       const receiverUser = await User.findById(message.receiverId);
       if (!receiverUser.allowStrangerMessage) {
-        return res
-          .status(403)
-          .json({
-            error:
-              "You cannot revoke this message because the receiver does not allow messages from strangers and you are not friends.",
-          });
+        return res.status(403).json({
+          error:
+            "You cannot revoke this message because the receiver does not allow messages from strangers and you are not friends.",
+        });
       }
     }
     // --- END BỔ SUNG ---
@@ -369,12 +377,10 @@ export const editMessage = async (req, res) => {
     if (!friendship) {
       const receiverUser = await User.findById(message.receiverId);
       if (!receiverUser.allowStrangerMessage) {
-        return res
-          .status(403)
-          .json({
-            error:
-              "You cannot edit this message because the receiver does not allow messages from strangers and you are not friends.",
-          });
+        return res.status(403).json({
+          error:
+            "You cannot edit this message because the receiver does not allow messages from strangers and you are not friends.",
+        });
       }
     }
     // --- END BỔ SUNG ---
