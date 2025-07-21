@@ -14,6 +14,7 @@ import {
   Shield,
   MessageCircle,
   Reply,
+  X,
 } from "lucide-react";
 
 const ChatContainer = () => {
@@ -30,6 +31,7 @@ const ChatContainer = () => {
   const messageEndRef = useRef(null);
   const [editingMessageId, setEditingMessageId] = useState(null);
   const [replyingMessage, setReplyingMessage] = useState(null);
+  const [imageModal, setImageModal] = useState({ open: false, src: null });
 
   const isSelectedUserTyping = typingUsers.includes(selectedUser?._id);
 
@@ -83,6 +85,28 @@ const ChatContainer = () => {
   return (
     <div className="flex-1 flex flex-col overflow-auto">
       <ChatHeader />
+      {/* Modal phóng to ảnh */}
+      {imageModal.open && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70"
+          onClick={() => setImageModal({ open: false, src: null })}
+        >
+          <div className="relative" onClick={(e) => e.stopPropagation()}>
+            <img
+              src={imageModal.src}
+              alt="Preview"
+              className="max-h-[80vh] max-w-[90vw] rounded-lg shadow-2xl border-2 border-white"
+              style={{ background: "#fff" }}
+            />
+            <button
+              className="absolute top-2 right-2 bg-black/60 hover:bg-black/80 text-white rounded-full p-2"
+              onClick={() => setImageModal({ open: false, src: null })}
+            >
+              <X size={24} />
+            </button>
+          </div>
+        </div>
+      )}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.map((message) =>
           message.system ? (
@@ -194,22 +218,36 @@ const ChatContainer = () => {
                     {/* Nếu là reply, hiển thị nội dung tin nhắn được reply (bọc rõ ràng) */}
                     {message.replyTo && (
                       <div className="mb-2 px-3 py-2 rounded-md bg-base-300/80 dark:bg-base-100/60 text-sm text-gray-700 dark:text-gray-200 font-medium w-fit max-w-xs">
-                        {message.replyTo.text && (
-                          <span>{message.replyTo.text}</span>
-                        )}
-                        {message.replyTo.image && (
-                          <img
-                            src={message.replyTo.image}
-                            alt="img"
-                            className="w-6 h-6 rounded object-cover ml-2 inline-block align-middle"
-                          />
-                        )}
-                        {message.replyTo.sticker && (
-                          <img
-                            src={message.replyTo.sticker}
-                            alt="sticker"
-                            className="w-6 h-6 ml-2 inline-block align-middle"
-                          />
+                        {message.replyTo.revoked ? (
+                          <span className="italic text-gray-500">
+                            Message has been revoked
+                          </span>
+                        ) : (
+                          <>
+                            {message.replyTo.text && (
+                              <span>{message.replyTo.text}</span>
+                            )}
+                            {message.replyTo.image && (
+                              <img
+                                src={message.replyTo.image}
+                                alt="img"
+                                className="w-6 h-6 rounded object-cover ml-2 inline-block align-middle cursor-pointer"
+                                onClick={() =>
+                                  setImageModal({
+                                    open: true,
+                                    src: message.replyTo.image,
+                                  })
+                                }
+                              />
+                            )}
+                            {message.replyTo.sticker && (
+                              <img
+                                src={message.replyTo.sticker}
+                                alt="sticker"
+                                className="w-6 h-6 ml-2 inline-block align-middle"
+                              />
+                            )}
+                          </>
                         )}
                       </div>
                     )}
@@ -224,12 +262,16 @@ const ChatContainer = () => {
                       </p>
                     ) : (
                       <>
+                        {/* Ảnh gửi trong tin nhắn */}
                         {message.image && (
                           <img
                             src={message.image}
                             alt="Attachment"
-                            className="sm:max-w-[200px] rounded-md mb-2"
+                            className="sm:max-w-[200px] rounded-md mb-2 cursor-pointer"
                             loading="lazy"
+                            onClick={() =>
+                              setImageModal({ open: true, src: message.image })
+                            }
                           />
                         )}
                         {message.sticker && (

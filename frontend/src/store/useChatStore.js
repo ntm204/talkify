@@ -343,9 +343,18 @@ export const useChatStore = create((set, get) => ({
         (selectedUser._id === revokedMessage.senderId ||
           selectedUser._id === revokedMessage.receiverId)
       ) {
-        const updatedMessages = messages.map((msg) =>
-          msg._id === revokedMessage._id ? revokedMessage : msg
-        );
+        // Cập nhật cả message gốc và các message reply tới message này
+        const updatedMessages = messages.map((msg) => {
+          if (msg._id === revokedMessage._id) return revokedMessage;
+          // Nếu là reply tới message vừa revoke, cập nhật lại trường replyTo
+          if (msg.replyTo && msg.replyTo._id === revokedMessage._id) {
+            return {
+              ...msg,
+              replyTo: revokedMessage,
+            };
+          }
+          return msg;
+        });
         set({ messages: updatedMessages });
       }
     });
@@ -412,9 +421,18 @@ export const useChatStore = create((set, get) => ({
         (selectedUser._id === editedMessage.senderId ||
           selectedUser._id === editedMessage.receiverId)
       ) {
-        const updatedMessages = messages.map((msg) =>
-          msg._id === editedMessage._id ? editedMessage : msg
-        );
+        // Cập nhật cả message gốc và các message reply tới message này
+        const updatedMessages = messages.map((msg) => {
+          if (msg._id === editedMessage._id) return editedMessage;
+          // Nếu là reply tới message vừa edit, cập nhật lại trường replyTo
+          if (msg.replyTo && msg.replyTo._id === editedMessage._id) {
+            return {
+              ...msg,
+              replyTo: editedMessage,
+            };
+          }
+          return msg;
+        });
         set({ messages: updatedMessages });
       }
     });

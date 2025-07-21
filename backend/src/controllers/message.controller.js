@@ -136,7 +136,7 @@ export const getMessages = async (req, res) => {
       .sort({ createdAt: 1 })
       .populate({
         path: "replyTo",
-        select: "text image sticker senderId",
+        select: "text image sticker senderId revoked",
       });
     // Lọc message system chỉ hiển thị cho người gửi nếu onlyForSender
     messages = messages.filter(
@@ -407,6 +407,32 @@ export const editMessage = async (req, res) => {
     message.text = text;
     message.edited = true;
     await message.save();
+
+    // Populate replyTo trước khi emit socket và trả về response (giống sendMessage)
+    await message.populate({
+      path: "replyTo",
+      select: "text image sticker senderId",
+    });
+
+    // --- BỔ SUNG: Cập nhật lại nội dung replyTo cho các message reply tới message này ---
+    const replyMessages = await Message.find({ replyTo: message._id });
+    for (const replyMsg of replyMessages) {
+      // Populate lại replyTo cho từng replyMsg
+      await replyMsg.populate({
+        path: "replyTo",
+        select: "text image sticker senderId",
+      });
+      // Emit socket event để frontend cập nhật nội dung reply mới nhất
+      const receiverSocketId = getReceiverSocketId(replyMsg.receiverId);
+      const senderSocketId = getReceiverSocketId(replyMsg.senderId);
+      if (receiverSocketId) {
+        io.to(receiverSocketId).emit("messageEdited", replyMsg);
+      }
+      if (senderSocketId) {
+        io.to(senderSocketId).emit("messageEdited", replyMsg);
+      }
+    }
+    // --- END BỔ SUNG ---
 
     // Gửi socket event
     const receiverSocketId = getReceiverSocketId(message.receiverId);
