@@ -160,8 +160,6 @@ const UserInfoModal = ({ user, onClose }) => {
                         disabled={updatingStranger}
                         className="checkbox checkbox-primary checkbox-sm sm:checkbox-md"
                       />
-                      <div className="swap-on text-xs">ON</div>
-                      <div className="swap-off text-xs">OFF</div>
                     </label>
                   </div>
                 </div>

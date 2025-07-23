@@ -477,6 +477,7 @@ export const useChatStore = create((set, get) => ({
           get().fetchFriends();
           get().fetchSentRequests();
           get().fetchReceivedRequests();
+          get().getUsers(); // Thêm dòng này để Sidebar cập nhật realtime
         }, 100);
       }
     });

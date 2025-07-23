@@ -435,7 +435,7 @@ const FriendsPage = () => {
                 <div>
                   {isFriendsLoading ? (
                     <LoadingSkeleton />
-                  ) : friends.length === 0 ? (
+                  ) : filteredFriends.length === 0 ? (
                     <div className="text-center py-16">
                       <div className="bg-base-100 rounded-full w-20 h-20 mx-auto mb-4 flex items-center justify-center">
                         <Users className="w-10 h-10 text-base-content/30" />
@@ -456,7 +456,7 @@ const FriendsPage = () => {
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {friends.map((friend) => (
+                      {filteredFriends.map((friend) => (
                         <UserCard
                           key={friend._id}
                           user={friend}

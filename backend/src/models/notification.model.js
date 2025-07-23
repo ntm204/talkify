@@ -14,13 +14,32 @@ const NotificationSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ["friend_request", "friend_accepted", "friend_declined"],
+      enum: [
+        "friend_request",
+        "friend_accepted",
+        "friend_declined",
+        "post_like",
+        "post_comment",
+        "comment_reply",
+      ],
       required: true,
     },
     friendship: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Friendship",
-      required: true,
+      required: function () {
+        return (
+          this.type === "friend_request" || this.type === "friend_accepted"
+        );
+      },
+    },
+    post: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Post",
+    },
+    comment: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Comment",
     },
     message: {
       type: String,

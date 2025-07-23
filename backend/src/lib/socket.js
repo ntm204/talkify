@@ -108,4 +108,23 @@ export function broadcastToAll(event, data) {
   io.emit(event, data);
 }
 
+// Emit realtime khi có like/unlike bài viết
+export function sendPostLikeUpdate(postId, likeCount, likedUserId) {
+  // Gửi cho tất cả user đang online (có thể mở rộng chỉ gửi cho user đang xem post)
+  io.emit("postLikeUpdate", { postId, likeCount, likedUserId });
+}
+
+// Emit realtime khi có comment/reply mới
+export function sendPostCommentUpdate(postId, comment) {
+  io.emit("postCommentUpdate", { postId, comment });
+}
+
+// Emit notification realtime cho các notification liên quan post (like, comment, reply)
+export function sendPostNotification(userId, notification) {
+  const receiverSocketId = getReceiverSocketId(userId);
+  if (receiverSocketId) {
+    io.to(receiverSocketId).emit("postNotification", notification);
+  }
+}
+
 export { io, app, server };

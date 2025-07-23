@@ -8,11 +8,14 @@ import {
   X,
   LucideGlobe,
   Users,
+  House,
   Bell,
   UserPlus,
   UserCheck,
   UserX,
 } from "lucide-react";
+import socket from "../lib/socket";
+import toast from "react-hot-toast";
 
 const Navbar = () => {
   const {
@@ -25,6 +28,7 @@ const Navbar = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [localUnread, setLocalUnread] = useState(0);
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -66,6 +70,111 @@ const Navbar = () => {
     setShowNotifications(false);
   }, [location.pathname]);
 
+  useEffect(() => {
+    if (!authUser) return;
+    socket.connect();
+    const handlePostNotification = (notification) => {
+      // Xác định loại toast
+      let toastType = "info";
+      if (
+        notification.type === "friend_declined" ||
+        notification.type === "error"
+      )
+        toastType = "error";
+      if (
+        notification.type === "friend_accepted" ||
+        notification.type === "success"
+      )
+        toastType = "success";
+      // Nội dung tiếng Anh
+      let toastMsg = notification.message;
+      if (notification.type === "post_like")
+        toastMsg = "Someone liked your post!";
+      if (notification.type === "post_comment")
+        toastMsg = "Someone commented on your post!";
+      if (notification.type === "comment_reply")
+        toastMsg = "Someone replied to your comment!";
+      if (notification.type === "friend_request")
+        toastMsg = "You have a new friend request!";
+      if (notification.type === "friend_accepted")
+        toastMsg = "You're now friends!";
+      if (notification.type === "friend_declined")
+        toastMsg = "Friend request declined.";
+      // Hiện toast notification
+      toast.custom((t) => (
+        <div
+          className={`bg-base-100 border px-4 py-3 rounded-lg shadow-lg flex items-center gap-3 ${
+            toastType === "error"
+              ? "border-red-500"
+              : toastType === "success"
+              ? "border-green-500"
+              : "border-blue-500"
+          }`}
+          style={{ minWidth: 220 }}
+        >
+          <Bell
+            className={`w-5 h-5 ${
+              toastType === "error"
+                ? "text-red-500"
+                : toastType === "success"
+                ? "text-green-500"
+                : "text-blue-500"
+            }`}
+          />
+          <div>
+            <div
+              className={`font-semibold ${
+                toastType === "error"
+                  ? "text-red-500"
+                  : toastType === "success"
+                  ? "text-green-500"
+                  : "text-blue-500"
+              }`}
+            >
+              {toastType === "error"
+                ? "Error"
+                : toastType === "success"
+                ? "Success"
+                : "Notification"}
+            </div>
+            <div className="text-sm">{toastMsg}</div>
+          </div>
+          <button
+            className="ml-auto btn btn-xs btn-ghost"
+            onClick={() => toast.dismiss(t.id)}
+          >
+            &times;
+          </button>
+        </div>
+      ));
+      // Thêm vào danh sách notification (không ghi đè, không phân tách)
+      if (typeof window !== "undefined" && window.dispatchEvent) {
+        window.dispatchEvent(
+          new CustomEvent("newPostNotification", {
+            detail: { ...notification, toastMsg },
+          })
+        );
+      }
+      setLocalUnread((c) => c + 1);
+    };
+    socket.on("postNotification", handlePostNotification);
+    return () => {
+      socket.off("postNotification", handlePostNotification);
+      socket.disconnect();
+    };
+  }, [authUser]);
+
+  // Lắng nghe event để thêm notification bài viết vào store (nếu store không có sẵn logic này)
+  useEffect(() => {
+    const handler = (e) => {
+      if (typeof window !== "undefined" && window.addNotification) {
+        window.addNotification(e.detail);
+      }
+    };
+    window.addEventListener("newPostNotification", handler);
+    return () => window.removeEventListener("newPostNotification", handler);
+  }, []);
+
   const toggleModal = () => {
     if (isModalOpen) {
       setIsClosing(true);
@@ -81,7 +190,8 @@ const Navbar = () => {
   const handleNotificationClick = () => {
     setShowNotifications((prev) => !prev);
     if (!showNotifications) {
-      markAllNotificationsRead();
+      setLocalUnread(0);
+      markAllNotificationsRead && markAllNotificationsRead();
     }
   };
 
@@ -103,130 +213,134 @@ const Navbar = () => {
 
         {/* Navigation Buttons */}
         <nav className="flex items-center gap-3">
-          {authUser && (
-            <div className="relative">
-              <button
-                ref={notificationButtonRef}
-                type="button"
-                className="btn btn-sm btn-ghost flex items-center gap-1.5 hover:bg-base-200 rounded-lg transition-colors duration-300"
-                aria-label="Open notifications"
-                onClick={handleNotificationClick}
+          {/* Bell notification realtime */}
+          <div className="relative">
+            <button
+              ref={notificationButtonRef}
+              type="button"
+              className="btn btn-sm btn-ghost flex items-center gap-1.5 hover:bg-base-200 rounded-lg transition-colors duration-300"
+              aria-label="Open notifications"
+              onClick={handleNotificationClick}
+            >
+              <Bell className="w-5 h-5" />
+              {(localUnread > 0 || unreadCount > 0) && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5 min-w-[18px] flex items-center justify-center notification-badge">
+                  {localUnread + unreadCount > 99
+                    ? "99+"
+                    : localUnread + unreadCount}
+                </span>
+              )}
+            </button>
+            {showNotifications && (
+              <div
+                ref={notificationRef}
+                className="absolute right-0 mt-2 w-80 bg-base-100 border border-base-300 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto notification-dropdown"
               >
-                <Bell className="w-5 h-5" />
-                {unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5 min-w-[18px] flex items-center justify-center notification-badge">
-                    {unreadCount > 99 ? "99+" : unreadCount}
-                  </span>
-                )}
-              </button>
-              {showNotifications && (
-                <div
-                  ref={notificationRef}
-                  className="absolute right-0 mt-2 w-80 bg-base-100 border border-base-300 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto notification-dropdown"
-                >
-                  <div className="p-3 border-b font-semibold text-base-content flex items-center justify-between">
-                    <span>Notifications</span>
-                    <button
-                      onClick={() => setShowNotifications(false)}
-                      className="btn btn-ghost btn-xs"
-                      aria-label="Close notifications"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
+                <div className="p-3 border-b font-semibold text-base-content flex items-center justify-between">
+                  <span>Notifications</span>
+                  <button
+                    onClick={() => setShowNotifications(false)}
+                    className="btn btn-ghost btn-xs"
+                    aria-label="Close notifications"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                {notifications.length === 0 ? (
+                  <div className="p-4 text-center text-base-content/60">
+                    No notifications
                   </div>
-                  {notifications.length === 0 ? (
-                    <div className="p-4 text-center text-base-content/60">
-                      No notifications
-                    </div>
-                  ) : (
-                    <ul>
-                      {notifications.slice(0, 4).map((n, idx) => (
-                        <li
-                          key={n._id || idx}
-                          className="px-4 py-4 border-b last:border-b-0 hover:bg-base-200/50 cursor-pointer transition-all duration-200 group"
-                          onClick={() => {
-                            setShowNotifications(false);
-                            if (n.type === "friend_request")
-                              navigate("/friends");
-                            if (n.type === "friend_accepted")
-                              navigate("/friends");
-                          }}
-                        >
-                          <div className="flex items-start gap-3">
-                            <div
-                              className={`w-3 h-3 rounded-full mt-2 flex-shrink-0 ${
-                                n.type === "friend_request"
-                                  ? "bg-primary animate-pulse"
-                                  : n.type === "friend_accepted"
-                                  ? "bg-success"
-                                  : "bg-error"
-                              }`}
-                            ></div>
-                            <div className="flex-1">
-                              {n.type === "friend_request" && (
-                                <div>
-                                  <div className="flex items-center gap-2 mb-1">
-                                    <UserPlus
-                                      size={16}
-                                      className="text-primary"
-                                    />
-                                    <span className="font-medium text-base-content">
-                                      New Friend Request
-                                    </span>
-                                  </div>
+                ) : (
+                  <ul>
+                    {notifications
+                      .filter((n) =>
+                        [
+                          "friend_request",
+                          "friend_accepted",
+                          "post_like",
+                          "post_comment",
+                          "comment_reply",
+                        ].includes(n.type)
+                      )
+                      .slice(0, 10)
+                      .map((n, idx) => {
+                        // Cá nhân hóa nội dung
+                        let mainMsg = "Notification";
+                        if (n.type === "friend_request") {
+                          mainMsg = n.senderName
+                            ? `${n.senderName} sent you a friend request`
+                            : "You have a new friend request!";
+                        } else if (n.type === "friend_accepted") {
+                          mainMsg = n.senderName
+                            ? `${n.senderName} accepted your friend request`
+                            : "Your friend request was accepted!";
+                        } else if (n.type === "post_like") {
+                          mainMsg = n.senderName
+                            ? `${n.senderName} liked your post`
+                            : "You got a like!";
+                        } else if (n.type === "post_comment") {
+                          mainMsg = n.senderName
+                            ? `${n.senderName} commented on your post`
+                            : "You got a comment!";
+                        } else if (n.type === "comment_reply") {
+                          mainMsg = n.senderName
+                            ? `${n.senderName} replied to your comment`
+                            : "You got a reply!";
+                        }
+                        return (
+                          <li
+                            key={n._id || idx}
+                            className="px-4 py-4 border-b last:border-b-0 hover:bg-base-200/50 cursor-pointer transition-all duration-200 group"
+                            onClick={() => {
+                              setShowNotifications(false);
+                              if (
+                                n.type === "friend_request" ||
+                                n.type === "friend_accepted"
+                              )
+                                navigate("/friends");
+                              // Nếu là post_like, post_comment, comment_reply thì mở modal bài viết
+                              if (
+                                [
+                                  "post_like",
+                                  "post_comment",
+                                  "comment_reply",
+                                ].includes(n.type) &&
+                                n.post
+                              ) {
+                                navigate(`/feed?postId=${n.post}`);
+                              }
+                            }}
+                          >
+                            <div className="flex items-start gap-3">
+                              <div className="w-3 h-3 rounded-full mt-2 flex-shrink-0 bg-primary animate-pulse"></div>
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <Bell size={16} className="text-primary" />
+                                  <span className="font-medium text-base-content">
+                                    {mainMsg}
+                                  </span>
+                                </div>
+                                {n.message && (
                                   <p className="text-sm text-base-content/60 mb-2">
                                     {n.message}
                                   </p>
+                                )}
+                                <div className="text-xs text-base-content/40 group-hover:text-base-content/60 transition-colors duration-200">
+                                  {new Date(
+                                    n.createdAt || Date.now()
+                                  ).toLocaleString()}
                                 </div>
-                              )}
-                              {n.type === "friend_accepted" && (
-                                <div>
-                                  <div className="flex items-center gap-2 mb-1">
-                                    <UserCheck
-                                      size={16}
-                                      className="text-success"
-                                    />
-                                    <span className="font-medium text-success">
-                                      Friend Request Accepted
-                                    </span>
-                                  </div>
-                                  <p className="text-sm text-base-content/60 mb-2">
-                                    {n.message}
-                                  </p>
-                                </div>
-                              )}
-                              {n.type === "friend_declined" && (
-                                <div>
-                                  <div className="flex items-center gap-2 mb-1">
-                                    <UserX size={16} className="text-error" />
-                                    <span className="font-medium text-error">
-                                      Friend Request Declined
-                                    </span>
-                                  </div>
-                                  <p className="text-sm text-base-content/60 mb-2">
-                                    {n.message}
-                                  </p>
-                                </div>
-                              )}
-                              <div className="text-xs text-base-content/40 group-hover:text-base-content/60 transition-colors duration-200">
-                                {new Date(n.createdAt).toLocaleString("en-US", {
-                                  year: "numeric",
-                                  month: "short",
-                                  day: "numeric",
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                })}
                               </div>
                             </div>
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
+                          </li>
+                        );
+                      })}
+                  </ul>
+                )}
+              </div>
+            )}
+          </div>
+          {/* End Bell notification */}
           {authUser ? (
             <button
               type="button"
@@ -295,6 +409,15 @@ const Navbar = () => {
               </div>
 
               <div className="space-y-2">
+                <Link
+                  to="/feed"
+                  onClick={toggleModal}
+                  className="flex items-center gap-3 p-3 rounded-lg hover:bg-base-200 transition-colors duration-200"
+                >
+                  <House className="w-4 h-4" />
+                  <span>Feed</span>
+                </Link>
+
                 <Link
                   to="/profile"
                   onClick={toggleModal}

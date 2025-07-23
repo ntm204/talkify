@@ -233,6 +233,11 @@ export const useAuthStore = create((set, get) => ({
       }
     });
 
+    socket.on("postNotification", (notification) => {
+      console.log("Received post notification:", notification);
+      get().addNotification(notification);
+    });
+
     socket.on("connect_error", (err) => {
       console.error("Socket connect error:", err.message);
     });

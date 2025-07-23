@@ -5,6 +5,7 @@ import { useThemeStore } from "./store/useThemeStore";
 import { useEffect, Suspense, lazy } from "react";
 import { Loader } from "lucide-react";
 import { Toaster } from "react-hot-toast";
+import FeedPage from "./pages/FeedPage";
 
 const HomePage = lazy(() => import("./pages/HomePage"));
 const FriendsPage = lazy(() => import("./pages/FriendsPage"));
@@ -42,6 +43,10 @@ const App = () => {
           <Route
             path="/"
             element={authUser ? <HomePage /> : <Navigate to="/login" />}
+          />
+          <Route
+            path="/feed"
+            element={authUser ? <FeedPage /> : <Navigate to="/login" />}
           />
           <Route
             path="/signup"

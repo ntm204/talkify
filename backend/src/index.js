@@ -11,6 +11,7 @@ import authRoutes from "./routes/auth.route.js";
 import messageRoutes from "./routes/message.route.js";
 import friendshipRoutes from "./routes/friendship.route.js";
 import notificationRoutes from "./routes/notification.route.js";
+import postRoutes from "./routes/post.route.js";
 import { app, server } from "./lib/socket.js";
 
 dotenv.config();
@@ -31,6 +32,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/messages", messageRoutes);
 app.use("/api/friends", friendshipRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/posts", postRoutes);
 
 if (process.env.NODE_ENV === "production") {
   app.use(express.static(path.join(__dirname, "../frontend/dist")));
